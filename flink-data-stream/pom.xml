@@ -19,6 +19,18 @@
             <version>${project.version}</version>
             <!--            <scope>provided</scope>-->
         </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>2.7.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>2.7.5</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -47,7 +59,7 @@
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <!--如果要打包的话，这里要换成对应的 main class-->
-                                    <mainClass>cn.com.lrd.DataStream</mainClass>
+                                    <mainClass>cn.com.lrd.InputDataStream</mainClass>
                                 </transformer>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">

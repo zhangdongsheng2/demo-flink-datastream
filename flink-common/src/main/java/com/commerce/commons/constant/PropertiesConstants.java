@@ -35,4 +35,7 @@ public class PropertiesConstants {
     public static final String MYSQL_PASSWORD = "mysql.password";
     public static final String MYSQL_PORT = "mysql.port";
     public static final String MYSQL_USERNAME = "mysql.username";
+
+    //redis
+    public static final String LARUNDA_INPUT_FEED_KEY = "larunda.input.feed.key";
 }

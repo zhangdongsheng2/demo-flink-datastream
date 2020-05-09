@@ -1,8 +1,8 @@
 package com.commerce.commons.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
-
-import java.util.List;
+import lombok.NoArgsConstructor;
 
 /**
  * @Description InputData
@@ -12,7 +12,9 @@ import java.util.List;
  * @Version 1.0
  **/
 @Data
-public class InputData {
+@AllArgsConstructor
+@NoArgsConstructor
+public class InputDataSingle {
     /**
      * 设备sn
      */
@@ -33,15 +35,26 @@ public class InputData {
      * 仪表地址
      */
     private String add;
+
     /**
-     * 多属性值
+     * 属性名称
      */
-    private List<CodeValueVo> data;
+    private String code;
+
+    /**
+     * 值
+     */
+    private String value;
+
+    /**
+     * 企业的Schema 数据库名字
+     */
+    private String dsSchema;
     /**
      * 数据来源标记
      * 0: 实时数据，　１：离线数据
+     *
+     * 离线数据使用 时间参数 重新开一个job  进行处理
      */
-    private int from = 0;
-
-    private String inputData;
+//    private int from = 0;
 }

@@ -9,11 +9,17 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import java.io.IOException;
 
 /**
- * blog：http://www.54tianzhisheng.cn/
- * 微信公众号：zhisheng
+ *
  */
 public class ExecutionEnvUtil {
-    public static final ParameterTool PARAMETER_TOOL = createParameterTool();
+    private static ParameterTool PARAMETER_TOOL;
+
+    public static ParameterTool getParameterTool() {
+        if (PARAMETER_TOOL == null) {
+            PARAMETER_TOOL = createParameterTool();
+        }
+        return PARAMETER_TOOL;
+    }
 
     public static ParameterTool createParameterTool(final String[] args) throws Exception {
         return ParameterTool
@@ -36,13 +42,13 @@ public class ExecutionEnvUtil {
     public static StreamExecutionEnvironment prepare(ParameterTool parameterTool) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(parameterTool.getInt(PropertiesConstants.STREAM_PARALLELISM, 5));
-        env.getConfig().disableSysoutLogging();
         env.getConfig().setRestartStrategy(RestartStrategies.fixedDelayRestart(4, 60000));
-        if (parameterTool.getBoolean(PropertiesConstants.STREAM_CHECKPOINT_ENABLE, true)) {
-            env.enableCheckpointing(parameterTool.getLong(PropertiesConstants.STREAM_CHECKPOINT_INTERVAL, 10000));
-        }
         env.getConfig().setGlobalJobParameters(parameterTool);
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        env.setParallelism(parameterTool.getInt(PropertiesConstants.STREAM_PARALLELISM, 1));
+
+        CheckPointUtil.setCheckpointConfig(env, parameterTool);
+
         return env;
     }
 }
