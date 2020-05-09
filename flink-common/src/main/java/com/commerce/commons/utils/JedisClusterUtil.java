@@ -5,6 +5,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisCluster;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -55,6 +56,20 @@ public class JedisClusterUtil {
      * @throws Exception
      */
     public static JedisCluster reloadJedisCluster() throws Exception {
+        JedisPoolConfig config = new JedisPoolConfig();
+        // 最大连接数
+        config.setMaxTotal(1000);
+        // 最大连接空闲数
+        config.setMaxIdle(1000);
+        //设置集群状态扫描间隔
+        config.setTimeBetweenEvictionRunsMillis(200000);
+        //最大建立连接等待时间
+        config.setMaxWaitMillis(10000);
+        //在获取连接的时候检查有效性, 默认false
+        config.setTestOnBorrow(true);
+        //在空闲时检查有效性, 默认false
+        config.setTestOnReturn(true);
+
         logger.info("初始化实体");
         JedisCluster cluster;
         String redisAddrCfg = ExecutionEnvUtil.getParameterTool().get("redis.address");
@@ -71,7 +86,7 @@ public class JedisClusterUtil {
             jedisClusterNodes.add(new HostAndPort(ipAndPort[0],
                     Integer.parseInt(ipAndPort[1])));
         }
-        cluster = new JedisCluster(jedisClusterNodes, 2000, 6);
+        cluster = new JedisCluster(jedisClusterNodes, 30000, 3000, 10, config);
         return cluster;
     }
 
