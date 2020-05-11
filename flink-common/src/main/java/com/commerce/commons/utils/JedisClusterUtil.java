@@ -7,6 +7,7 @@ import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPoolConfig;
 
+import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -89,6 +90,26 @@ public class JedisClusterUtil {
         cluster = new JedisCluster(jedisClusterNodes, 30000, 3000, 10, config);
         return cluster;
     }
+
+
+    public static Set<InetSocketAddress> getJedisNodes() throws Exception {
+        Set<InetSocketAddress> jedisClusterNodes = new HashSet<InetSocketAddress>();
+        String redisAddrCfg = ExecutionEnvUtil.getParameterTool().get("redis.address");
+        if (StringUtils.isEmpty(redisAddrCfg) || redisAddrCfg.split(",").length == 0) {
+            throw new Exception("System.properties中REDIS_ADDR_CFG属性为空");
+        }
+        String[] addrs = redisAddrCfg.split(",");
+        for (String addr : addrs) {
+            String[] ipAndPort = addr.split(":");
+            if (ipAndPort.length != 2) {
+                throw new Exception("System.properties中REDIS_ADDR_CFG属性配置错误");
+            }
+            jedisClusterNodes.add(new InetSocketAddress(ipAndPort[0],
+                    Integer.parseInt(ipAndPort[1])));
+        }
+        return jedisClusterNodes;
+    }
+
 
     /*
      * 测试

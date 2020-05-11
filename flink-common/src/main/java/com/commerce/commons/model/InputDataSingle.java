@@ -44,7 +44,7 @@ public class InputDataSingle {
     /**
      * 值
      */
-    private String value;
+    private double value;
 
     /**
      * 企业的Schema 数据库名字
@@ -53,8 +53,13 @@ public class InputDataSingle {
     /**
      * 数据来源标记
      * 0: 实时数据，　１：离线数据
-     *
+     * <p>
      * 离线数据使用 时间参数 重新开一个job  进行处理
      */
 //    private int from = 0;
+
+
+    private String inputId;
+
+    private String feedId;
 }

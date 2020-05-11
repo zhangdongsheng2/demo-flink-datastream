@@ -52,14 +52,14 @@ public class QuerySchemasFlatMap extends RichFlatMapFunction<InputDataSingle, In
         }
     }
 
-    @Override
-    public void close() throws Exception {
-        //关闭连接和释放资源
-        if (con != null) {
-            con.close();
-        }
-        if (ps != null) {
-            ps.close();
-        }
-    }
+//    @Override
+//    public void close() throws Exception {
+//        //关闭连接和释放资源
+//        if (con != null) {
+//            con.close();
+//        }
+//        if (ps != null) {
+//            ps.close();
+//        }
+//    }
 }

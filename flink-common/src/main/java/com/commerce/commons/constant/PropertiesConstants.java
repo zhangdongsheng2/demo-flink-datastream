@@ -38,4 +38,17 @@ public class PropertiesConstants {
 
     //redis
     public static final String LARUNDA_INPUT_FEED_KEY = "larunda.input.feed.key";
+
+    //influxDB
+    public static final String INFLUXDB_URL = "influxdb.url";
+    public static final String INFLUXDB_USERNAME = "influxdb.username";
+    public static final String INFLUXDB_PASSWORD = "influxdb.password";
+    public static final String INFLUXDB_DATABASE = "influxdb.database";
+    public static final String INFLUXDB_BATCHACTIONS = "influxdb.batchActions";
+    public static final String INFLUXDB_FLUSHDURATION = "influxdb.flushDuration";
+    public static final String INFLUXDB_ENABLEGZIP = "influxdb.enableGzip";
+    public static final String INFLUXDB_CREATEDATABASE = "influxdb.createDatabase";
+    public static final String INFLUXDB_MEASUREMENT = "influxdb.measurement";
+
+
 }

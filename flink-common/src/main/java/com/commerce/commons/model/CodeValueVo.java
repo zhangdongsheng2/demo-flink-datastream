@@ -20,5 +20,5 @@ public class CodeValueVo {
     /**
      * 值
      */
-    private String value;
+    private double value;
 }

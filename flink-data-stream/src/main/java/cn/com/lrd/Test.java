@@ -1,7 +1,13 @@
 package cn.com.lrd;
 
-import java.sql.SQLException;
-import java.time.LocalDateTime;
+import com.commerce.commons.config.InfluxDBConfig;
+import com.commerce.commons.utils.InfluxDBConfigUtil;
+import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBFactory;
+import org.influxdb.dto.Point;
+import org.influxdb.dto.Query;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * @description:
@@ -9,7 +15,7 @@ import java.time.LocalDateTime;
  * @date: 2020/5/8 13:58
  */
 public class Test {
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws Exception {
 //        String iotDeviceSql = " SELECT id,dev_seri_no FROM iot_FgeuOtIuaa.iot_device WHERE dev_seri_no=? AND is_del=?";
 
 
@@ -21,6 +27,61 @@ public class Test {
 //
 //        System.out.println(query1);
 
-        System.out.println(LocalDateTime.now().toString());
+//        System.out.println(LocalDateTime.now().toString());
+
+//        System.out.println( JedisClusterUtil.getJedisCluster().hgetAll("aaaaaa"));
+
+//查询公式是否存在 根据inputID
+//        System.out.println( JedisClusterUtil.getJedisCluster().hget("dev2-rest-b-config-to-calibration","cdb053c53ea8414fa64c8cb43298b373"));
+
+        //10000015_A10_1_2
+//        System.out.println( JedisClusterUtil.getJedisCluster().hget("larunda.input.feed.key","10000015_A10_1_2"));
+
+//        System.out.println(JedisClusterUtil.getJedisCluster().hgetAll(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY)));
+
+//        System.out.println( new ObjectMapper().readValue(JedisClusterUtil.getJedisCluster().hget(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY),"10000025_A103_1_11"), String.class));
+
+
+//kafka 生产者
+//        final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
+//        Properties props = buildKafkaProducerProps(parameterTool);
+//        Producer<String, String> producer = new KafkaProducer<>(props);
+//        ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"),  "1","1");
+//        producer.send(record);
+//        producer.close();
+
+
+// Create a database...
+// https://docs.influxdata.com/influxdb/v1.7/query_language/database_management/
+        InfluxDBConfig influxDBConfig = InfluxDBConfigUtil.getInfluxDBConfig();
+        InfluxDB influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
+
+        influxDBClient.query(new Query("CREATE DATABASE " + influxDBConfig.getDatabase()));
+        influxDBClient.setDatabase(influxDBConfig.getDatabase());
+
+        if (influxDBConfig.getBatchActions() > 0) {
+            influxDBClient.enableBatch(influxDBConfig.getBatchActions(), influxDBConfig.getFlushDuration(), influxDBConfig.getFlushDurationTimeUnit());
+        }
+
+        influxDBClient.write(Point.measurement("cpu")
+                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+                .tag("location", "santa_monica")
+                .addField("level description", "below 3 feet")
+                .addField("water_level", 2.064d)
+                .build());
+        System.out.println("aa");
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
