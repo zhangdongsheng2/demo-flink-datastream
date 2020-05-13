@@ -3,15 +3,16 @@ package cn.com.lrd.functions;
 import com.commerce.commons.config.InfluxDBConfig;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.utils.DateUtil;
+import com.commerce.commons.utils.InfluxDBConfigUtil;
+import org.apache.flink.api.common.io.RichOutputFormat;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.util.Preconditions;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -19,19 +20,18 @@ import java.util.concurrent.TimeUnit;
  * @author: zhangdongsheng
  * @date: 2020/5/11 11:38
  */
-public class InfluxDBSink extends RichSinkFunction<InputDataSingle> {
+public class InfluxDBOutput extends RichOutputFormat<InputDataSingle> {
 
-    private final InfluxDBConfig influxDBConfig;
+    private transient InfluxDBConfig influxDBConfig;
     private transient InfluxDB influxDBClient;
 
-    public InfluxDBSink(InfluxDBConfig influxDBConfig) {
-        this.influxDBConfig = Preconditions.checkNotNull(influxDBConfig, "InfluxDB client config should not be null");
+    @Override
+    public void configure(Configuration parameters) {
+        influxDBConfig = Preconditions.checkNotNull(InfluxDBConfigUtil.getInfluxDBConfig(), "InfluxDB client config should not be null");
     }
 
     @Override
-    public void open(Configuration parameters) throws Exception {
-        super.open(parameters);
-
+    public void open(int taskNumber, int numTasks) throws IOException {
         influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
         if (influxDBConfig.isCreateDatabase())
             influxDBClient.query(new Query("CREATE DATABASE " + influxDBConfig.getDatabase()));
@@ -47,7 +47,7 @@ public class InfluxDBSink extends RichSinkFunction<InputDataSingle> {
     }
 
     @Override
-    public void invoke(InputDataSingle input, SinkFunction.Context context) throws Exception {
+    public void writeRecord(InputDataSingle input) throws IOException {
         long time = DateUtil.parseStrDateTime(input.getTime());
         Point.Builder builder = Point.measurement(influxDBConfig.getMeasurement())
                 .tag("feedid", input.getFeedId())

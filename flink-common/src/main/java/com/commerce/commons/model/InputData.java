@@ -1,6 +1,8 @@
 package com.commerce.commons.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -12,6 +14,8 @@ import java.util.List;
  * @Version 1.0
  **/
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class InputData {
     /**
      * 设备sn
@@ -43,5 +47,9 @@ public class InputData {
      */
     private int from = 0;
 
+    //错误数据记录
     private String inputData;
+
+    //硬件补发数据
+    private int delay;
 }

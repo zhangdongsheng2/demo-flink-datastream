@@ -1,13 +1,10 @@
-package cn.com.lrd;
+package cn.com.lrd.online;
 
-import com.commerce.commons.config.InfluxDBConfig;
-import com.commerce.commons.utils.InfluxDBConfigUtil;
-import org.influxdb.InfluxDB;
-import org.influxdb.InfluxDBFactory;
-import org.influxdb.dto.Point;
-import org.influxdb.dto.Query;
+import com.commerce.commons.utils.DateUtil;
+import com.commerce.commons.utils.JedisClusterUtil;
 
-import java.util.concurrent.TimeUnit;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * @description:
@@ -32,7 +29,7 @@ public class Test {
 //        System.out.println( JedisClusterUtil.getJedisCluster().hgetAll("aaaaaa"));
 
 //查询公式是否存在 根据inputID
-//        System.out.println( JedisClusterUtil.getJedisCluster().hget("dev2-rest-b-config-to-calibration","cdb053c53ea8414fa64c8cb43298b373"));
+        System.out.println(JedisClusterUtil.getJedisCluster().hget("dev2-rest-b-config-to-calibration", "cdb053c53ea8414fa64c8cb43298b373"));
 
         //10000015_A10_1_2
 //        System.out.println( JedisClusterUtil.getJedisCluster().hget("larunda.input.feed.key","10000015_A10_1_2"));
@@ -53,23 +50,35 @@ public class Test {
 
 // Create a database...
 // https://docs.influxdata.com/influxdb/v1.7/query_language/database_management/
-        InfluxDBConfig influxDBConfig = InfluxDBConfigUtil.getInfluxDBConfig();
-        InfluxDB influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
+//        InfluxDBConfig influxDBConfig = InfluxDBConfigUtil.getInfluxDBConfig();
+//        InfluxDB influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
+//
+//        influxDBClient.query(new Query("CREATE DATABASE " + influxDBConfig.getDatabase()));
+//        influxDBClient.setDatabase(influxDBConfig.getDatabase());
 
-        influxDBClient.query(new Query("CREATE DATABASE " + influxDBConfig.getDatabase()));
-        influxDBClient.setDatabase(influxDBConfig.getDatabase());
+//        if (influxDBConfig.getBatchActions() > 0) {
+//            influxDBClient.enableBatch(influxDBConfig.getBatchActions(), influxDBConfig.getFlushDuration(), influxDBConfig.getFlushDurationTimeUnit());
+//        }
 
-        if (influxDBConfig.getBatchActions() > 0) {
-            influxDBClient.enableBatch(influxDBConfig.getBatchActions(), influxDBConfig.getFlushDuration(), influxDBConfig.getFlushDurationTimeUnit());
-        }
+//        influxDBClient.write(Point.measurement("cpu")
+//                .time(1589250808384l, TimeUnit.MILLISECONDS)
+//                .tag("location", "santa_monica")
+//                .addField("level description", "below 3 feet")
+//                .addField("water_level", 8.666d)
+//                .build());
 
-        influxDBClient.write(Point.measurement("cpu")
-                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-                .tag("location", "santa_monica")
-                .addField("level description", "below 3 feet")
-                .addField("water_level", 2.064d)
-                .build());
-        System.out.println("aa");
+
+        LocalDateTime yyyyMMddHHmmss = DateUtil.parseLocalDateTime("20200512143700", "yyyyMMddHHmmss");
+
+
+//        System.out.println(sub(15,11));
+    }
+
+
+    public static double sub(double v1, double v2) {
+        BigDecimal b1 = new BigDecimal(Double.toString(v1));
+        BigDecimal b2 = new BigDecimal(Double.toString(v2));
+        return b1.subtract(b2).doubleValue();
     }
 }
 

@@ -1,11 +1,11 @@
-package cn.com.lrd;
+package cn.com.lrd.online;
 
 import cn.com.lrd.functions.*;
 import com.alibaba.fastjson.JSON;
-import com.commerce.commons.model.CodeValueVo;
-import com.commerce.commons.model.InputData;
-import com.commerce.commons.model.InputDataSingle;
+import com.alibaba.fastjson.JSONObject;
+import com.commerce.commons.model.*;
 import com.commerce.commons.schemas.InputDataSchema;
+import com.commerce.commons.utils.ESSinkUtil;
 import com.commerce.commons.utils.ExecutionEnvUtil;
 import com.commerce.commons.utils.InfluxDBConfigUtil;
 import com.commerce.commons.utils.JedisClusterUtil;
@@ -16,12 +16,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.elasticsearch.ElasticsearchSinkFunction;
+import org.apache.flink.streaming.connectors.elasticsearch.RequestIndexer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.redis.RedisSink;
 import org.apache.flink.streaming.connectors.redis.common.config.FlinkJedisClusterConfig;
@@ -32,6 +35,8 @@ import org.apache.flink.util.Collector;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.elasticsearch.client.Requests;
+import org.elasticsearch.common.xcontent.XContentType;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -45,11 +50,11 @@ import static com.commerce.commons.utils.KafkaConfigUtil.buildKafkaProps;
  * 实时处理
  */
 @Slf4j
-public class InputDataStream {
+public class OnlineDataStream {
+
 
     //--input.topic topic-pub555555 传参示例
     public static void main(String[] args) throws Exception {
-
         //启动前准备
         final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
         String fendTopic = parameterTool.get("changed.topic");
@@ -93,19 +98,37 @@ public class InputDataStream {
             }
         });
 
-//        inputData.flatMap(new FlatMapFunction<InputData, Object>() {
+//        SingleOutputStreamOperator<Object> process = singleData.flatMap(new FlatMapFunction<InputDataSingle, InputDataSingle>() {
 //            @Override
-//            public void flatMap(InputData value, Collector<Object> out) throws Exception {
-//                value.setAdd("99");
-//                out.collect(value);
-//
-//                value.setAdd("88");
-//                out.collect(value);
-//
-//                value.setAdd("ddd");
+//            public void flatMap(InputDataSingle value, Collector<InputDataSingle> out) throws Exception {
 //                out.collect(value);
 //            }
-//        }).print();
+//        }).keyBy(InputDataSingle::getCode)
+//                .process(new KeyedProcessFunction<String, InputDataSingle, Object>() {
+//                    private ValueState<Boolean> isExist;
+//
+//                    @Override
+//                    public void open(Configuration parameters) throws Exception {
+//                        ValueStateDescriptor<Boolean> keyedStateDuplicated =
+//                                new ValueStateDescriptor<>("ValueState", TypeInformation.of(new TypeHint<Boolean>() {
+//                                }));
+//                        // 从状态后端恢复状态
+//                        isExist = getRuntimeContext().getState(keyedStateDuplicated);
+//                    }
+//
+//                    @Override
+//                    public void processElement(InputDataSingle value, Context ctx, Collector<Object> out) throws Exception {
+//                        if (null == isExist.value())
+//                            isExist.update(true);
+//                        ctx.output(new OutputTag<String>("InputDataSingleInputDataSingle") {
+//                        }, value.getSn());
+//                    }
+//                });
+//
+//        process.print();
+//        process.getSideOutput(new OutputTag<String>("InputDataSingleInputDataSingle") {
+//        }).print("aaaaaaaaaaaaaaaaaaaaaa");
+
 
         SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2Stream = singleData.map(new MapFunction<InputDataSingle, Tuple2<String, InputDataSingle>>() {
             @Override
@@ -120,19 +143,33 @@ public class InputDataStream {
 
 //        tuple2Stream.print();
         //初始化公式
-        initFeedItem(fendTopic, env, props, JedisClusterUtil.getJedisNodes());
+//        initFeedItem(fendTopic, env, props, JedisClusterUtil.getJedisNodes());
 
         //创建仪表
 //        createInputIdFeedId(tuple2Stream);
 
         //校准数据
-        SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator = stCalibration(fendTopic, tuple2Stream);
+//        SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator = stCalibration(fendTopic, tuple2Stream);
 
-        stCalibrationSink(tuple2SingleOutputStreamOperator);
+        //校准数据存储
+//        stCalibrationSink(tuple2SingleOutputStreamOperator);
+
+        //用量统计
+//        stPreprocessor(tuple2SingleOutputStreamOperator);
 
         env.execute("flink kafka connector");
     }
 
+    /*
+   根据实时数据进行创建仪表
+    */
+    private static void createInputIdFeedId(SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> inputS) {
+        inputS.keyBy(0)
+                .process(new KeyedStateDeduplication())
+                //创建一个连接池, 查询出Schema
+                .flatMap(new QuerySchemasFlatMap()).setParallelism(1)
+                .addSink(new FeedRichSink()).setParallelism(1);
+    }
 
     /**
      * 初始化公式, 接收公式后存储到 redis提供使用
@@ -172,17 +209,6 @@ public class InputDataStream {
         }));
     }
 
-    /*
-     根据实时数据进行创建仪表
-     */
-    private static void createInputIdFeedId(SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> inputS) {
-        inputS.keyBy(0)
-                .process(new KeyedStateDeduplication())
-                //创建一个连接池, 查询出Schema
-                .flatMap(new QuerySchemasFlatMap()).setParallelism(1)
-                .addSink(new FeedRichSink()).setParallelism(1);
-    }
-
 
     /**
      * 数据根据公式校准
@@ -198,10 +224,50 @@ public class InputDataStream {
         tuple2SingleOutputStreamOperator.map((MapFunction<Tuple2<String, InputDataSingle>, InputDataSingle>) value -> value.f1)
                 .addSink(new InfluxDBSink(InfluxDBConfigUtil.getInfluxDBConfig()));
     }
+
+
+    /**
+     * 用量统计
+     * 用量统计依赖状态缓存, 如果状态出问题当天和月用量会计算错误.  状态路径不能随便更改
+     */
+    private static void stPreprocessor(SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator) {
+        SingleOutputStreamOperator<EsDosagePhase> process = tuple2SingleOutputStreamOperator
+                .flatMap(new PreprocessorFilterFlatMap())
+                .map(new PreprocessorTimeMap())
+                .keyBy(0)
+                .process(new KeyedStatePreprocessor());
+
+        //原始数据输出到原始数据库
+        ESSinkUtil.addSink(3, process, new ElasticsearchSinkFunction<EsDosagePhase>() {
+            @Override
+            public void process(EsDosagePhase esDosagePhase, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
+                requestIndexer.add(Requests.indexRequest()
+                        .index("dosage_phase")
+                        .type("_doc")
+                        .id(esDosagePhase.getId())
+                        .source(JSONObject.toJSONString(esDosagePhase), XContentType.JSON));
+            }
+        });
+
+        //统计数据输出到不同的数据库 ES
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc("dosage_half"));
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc("dosage_day"));
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc("dosage_hour"));
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc("dosage_month"));
+
+    }
+
+    private static ElasticsearchSinkFunction<EsDosage> getESSinkFunc(String index) {
+        return new ElasticsearchSinkFunction<EsDosage>() {
+            @Override
+            public void process(EsDosage esDosage, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
+                requestIndexer.add(Requests.indexRequest()
+                        .index(index)
+                        .type("_doc")
+                        .id(esDosage.getId())
+                        .source(JSONObject.toJSONString(esDosage), XContentType.JSON));
+            }
+        };
+    }
+
 }
-
-
-
-
-
-

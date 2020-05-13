@@ -1,11 +1,18 @@
 package com.commerce.commons.utils;
 
 
+import org.apache.commons.lang3.StringUtils;
+
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * blog：http://www.54tianzhisheng.cn/
@@ -15,6 +22,16 @@ public class DateUtil {
 
     public static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     public static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    public static final DateTimeFormatter YYYYMMddHHmmss = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+
+    public static String formatTime(LocalDateTime dateTimeStr) {
+        return dateTimeStr.format(YYYYMMddHHmmss);
+    }
+
+    public static String formatLocalDateTime(LocalDateTime dateTimeStr) {
+        return dateTimeStr.format(DATETIME_FORMATTER);
+    }
 
     /**
      * 返回当前的日期
@@ -52,12 +69,28 @@ public class DateUtil {
         return LocalDateTime.now().format(DATETIME_FORMATTER);
     }
 
+    //日期字符串格式化为 LocalDate
     public static LocalDate parseLocalDate(String dateStr, String pattern) {
         return LocalDate.parse(dateStr, DateTimeFormatter.ofPattern(pattern));
     }
 
+    //日期字符串解析为 LocalDateTime
     public static LocalDateTime parseLocalDateTime(String dateTimeStr, String pattern) {
         return LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ofPattern(pattern));
+    }
+
+    public static LocalDateTime parseLocalDateTime(String dateTimeStr) {
+        return LocalDateTime.parse(dateTimeStr, DATETIME_FORMATTER);
+    }
+
+    //yyyy-MM-dd HH:mm:ss 格式日期转换成毫秒
+    public static long parseStrDateTime(String time) {
+        return Timestamp.valueOf(LocalDateTime.parse(time, DATETIME_FORMATTER)).getTime();
+    }
+
+    //yyyy-MM-dd HH:mm:ss 格式日期转换成毫秒
+    public static long parseStrDateTimeSec(String time) {
+        return Timestamp.valueOf(LocalDateTime.parse(time, DATETIME_FORMATTER)).getTime() / 1000;
     }
 
     /**
@@ -178,4 +211,53 @@ public class DateUtil {
         return getCurrentLocalDate().plus(2, ChronoUnit.DECADES).format(DATE_FORMATTER);
     }
 
+    /**
+     * 时间戳转换成日期格式字符串
+     *
+     * @param seconds 精确到秒的字符串
+     * @param format
+     * @return
+     */
+    public static String timeStamp2Date(String seconds, String format) {
+        if (StringUtils.isEmpty(seconds)) {
+            return "";
+        }
+        if (format == null || format.isEmpty()) {
+            format = "yyyy-MM-dd HH:mm:ss";
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat(format);
+        return sdf.format(new Date(Long.parseLong(seconds)));
+    }
+
+
+    //根据指定时间获取 时间所在的半小时的开始时间和结束时间
+    public static List<LocalDateTime> getHalfStartTimeAndEdnTime(LocalDateTime localDateTime) {
+        LocalDateTime startTime;
+        LocalDateTime endTime;
+        int minute = localDateTime.getMinute();
+        if (minute == 10 || minute == 40) {
+            startTime = localDateTime.plusMinutes(-10);
+            endTime = localDateTime.plusMinutes(20);
+        } else if (minute == 20 || minute == 50) {
+            startTime = localDateTime.plusMinutes(-20);
+            endTime = localDateTime.plusMinutes(10);
+        } else {
+            startTime = localDateTime.plusMinutes(-30);
+            endTime = localDateTime;
+        }
+        List<LocalDateTime> localDateTimes = new ArrayList<>();
+        localDateTimes.add(startTime);
+        localDateTimes.add(endTime);
+        return localDateTimes;
+    }
+
+    //获取指定时间的秒
+    public static long toEpochSecond(LocalDateTime localDateTime) {
+        return localDateTime.toEpochSecond(ZoneOffset.of("+8"));
+    }
+
+    //获取指定时间的毫秒
+    public static long toEpochMilli(LocalDateTime localDateTime) {
+        return localDateTime.toInstant(ZoneOffset.of("+8")).toEpochMilli();
+    }
 }

@@ -24,6 +24,8 @@
         <slf4j.version>1.7.22</slf4j.version>
         <mysql.version>8.0.18</mysql.version>
         <scalikejdbc.version>3.3.2</scalikejdbc.version>
+        <httpclient.version>4.5.5</httpclient.version>
+        <httpmime.version>4.3.6</httpmime.version>
     </properties>
 
 

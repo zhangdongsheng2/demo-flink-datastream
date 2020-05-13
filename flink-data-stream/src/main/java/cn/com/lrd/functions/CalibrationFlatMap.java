@@ -49,6 +49,10 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
         InputDataSingle inputDataSingle = value.f1;
 
         String valueIds = jedisCluster.hget(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
+        if (StringUtils.isEmpty(valueIds)) {
+            log.info("数据没有inputId_feedId<<<{}", value.f1);
+            return;
+        }
         valueIds = new ObjectMapper().readValue(valueIds, String.class);
         List<String> valueList = Arrays.asList(valueIds.split(","));
         inputDataSingle.setInputId(valueList.get(0));
