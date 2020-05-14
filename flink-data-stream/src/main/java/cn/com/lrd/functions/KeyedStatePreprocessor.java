@@ -9,7 +9,10 @@ import com.commerce.commons.utils.DateUtil;
 import com.commerce.commons.utils.JedisClusterUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.flink.api.common.state.*;
+import org.apache.flink.api.common.state.MapState;
+import org.apache.flink.api.common.state.StateTtlConfig;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -32,31 +35,24 @@ import java.util.Date;
  * @date: 2020/5/12 16:37
  */
 @Slf4j
-public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle>, EsDosagePhase> {
-    public static final OutputTag<EsDosage> halfTimeOutputTag = new OutputTag<EsDosage>("halfTime") {
+public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle>, Tuple2<String, EsDosagePhase>> {
+    public static final OutputTag<Tuple2<String, EsDosage>> halfTimeOutputTag = new OutputTag<Tuple2<String, EsDosage>>("halfTime") {
     };
-    public static final OutputTag<EsDosage> hourTimeOutputTag = new OutputTag<EsDosage>("hourTime") {
+    public static final OutputTag<Tuple2<String, EsDosage>> hourTimeOutputTag = new OutputTag<Tuple2<String, EsDosage>>("hourTime") {
     };
-    public static final OutputTag<EsDosage> dayTimeOutputTag = new OutputTag<EsDosage>("dayTime") {
+    public static final OutputTag<Tuple2<String, EsDosage>> dayTimeOutputTag = new OutputTag<Tuple2<String, EsDosage>>("dayTime") {
     };
-    public static final OutputTag<EsDosage> monthTimeOutputTag = new OutputTag<EsDosage>("monthTime") {
+    public static final OutputTag<Tuple2<String, EsDosage>> monthTimeOutputTag = new OutputTag<Tuple2<String, EsDosage>>("monthTime") {
     };
 
 
 
-    private ValueState<Double> lastState;
     private ValueState<Long> lastTime;
-    private MapState<String, Double> timeState;
     private transient JedisCluster cluster;
 
     @Override
     public void open(Configuration parameters) throws Exception {
         cluster = JedisClusterUtil.getJedisCluster();
-        MapStateDescriptor<String, Double> timeStateDescriptor = new MapStateDescriptor<>("timeState",
-                TypeInformation.of(new TypeHint<String>() {
-                }),
-                TypeInformation.of(new TypeHint<Double>() {
-                }));
         // 状态 TTL 相关配置，过期时间设定为 36 小时
         StateTtlConfig ttlConfig = StateTtlConfig
                 .newBuilder(Time.hours(36))
@@ -64,54 +60,46 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
                 .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
                 .cleanupIncrementally(10, false)
                 .build();
-        // 开启 TTL
-        timeStateDescriptor.enableTimeToLive(ttlConfig);
-        // 从状态中恢复 timeState
-        this.timeState = getRuntimeContext().getMapState(timeStateDescriptor);
-
-        ValueStateDescriptor<Double> lastState = new ValueStateDescriptor<>("lastState", TypeInformation.of(new TypeHint<Double>() {
-        }));
-        lastState.enableTimeToLive(ttlConfig);
-        this.lastState = getRuntimeContext().getState(lastState);
-        ValueStateDescriptor<Long> lastTime = new ValueStateDescriptor<>("lastState", TypeInformation.of(new TypeHint<Long>() {
+        ValueStateDescriptor<Long> lastTime = new ValueStateDescriptor<>("lastTime", TypeInformation.of(new TypeHint<Long>() {
         }));
         lastTime.enableTimeToLive(ttlConfig);
         this.lastTime = getRuntimeContext().getState(lastTime);
     }
 
     @Override
-    public void processElement(Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle> value, Context ctx, Collector<EsDosagePhase> out) throws Exception {
+    public void processElement(Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle> value, Context ctx, Collector<Tuple2<String, EsDosagePhase>> out) throws Exception {
         InputDataSingle inputDataSingle = value.f5;
         long longTime = DateUtil.parseStrDateTime(inputDataSingle.getTime());
         //这里过滤一下乱序数据, 一个feedId 10分钟的基数出现乱序数据就不处理
-        if (lastTime.value() != null && longTime <= lastTime.value()) {
+        if (lastTime.value() != null && longTime < lastTime.value()) {
             log.info("乱序数据不处理>>>{}", inputDataSingle);
             return;
         }
         lastTime.update(longTime);
 
-        EsDosagePhase esDosagePhase = new EsDosagePhase(inputDataSingle.getFeedId() + "_" + inputDataSingle.getTime(), inputDataSingle.getFeedId(), inputDataSingle.getCode(), inputDataSingle.getValue(), inputDataSingle.getTime(), new Date(), new Date());
-        out.collect(esDosagePhase);
+        EsDosagePhase esDosagePhase = new EsDosagePhase(inputDataSingle.getFeedId(), inputDataSingle.getCode(), inputDataSingle.getValue(), inputDataSingle.getTime(), new Date(), new Date());
+        out.collect(new Tuple2<>(inputDataSingle.getFeedId() + "_" + inputDataSingle.getTime(), esDosagePhase));
 
         //当前Feed 上一笔数据
-        BigDecimal lastFeedValue = null;
-        if (lastState.value() != null)
-            lastFeedValue = BigDecimal.valueOf(lastState.value());
+//        BigDecimal lastFeedValue = null;
+//        if (lastState.value() != null)
+//            lastFeedValue = BigDecimal.valueOf(lastState.value());
         //当前Feed 现在的数据
-        BigDecimal currentFeedValue = BigDecimal.valueOf(inputDataSingle.getValue());
-        lastState.update(currentFeedValue.doubleValue());
+//        BigDecimal currentFeedValue = BigDecimal.valueOf(inputDataSingle.getValue());
+//        lastState.update(currentFeedValue.doubleValue());
         //现在的数据与上一笔数据的差值
-        double subtract = 0.0;
-        if (lastFeedValue != null)
-            subtract = currentFeedValue.subtract(lastFeedValue).doubleValue();
+//        double subtract = 0.0;
+//        if (lastFeedValue != null)
+//            subtract = currentFeedValue.subtract(lastFeedValue).doubleValue();
 
         //时间存入半小时
         Tuple2<LocalDateTime, LocalDateTime> halfTime = value.f1;
-        outPutData(timeState, halfTime, ctx, esDosagePhase, subtract, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
+//        outPutData(timeState, halfTime, ctx, esDosagePhase, subtract, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
+        outPutData(cluster, halfTime, ctx, esDosagePhase, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
 
         Tuple2<LocalDateTime, LocalDateTime> hourTime = value.f3;
-        outPutData(timeState, hourTime, ctx, esDosagePhase, subtract, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
-
+//        outPutData(timeState, hourTime, ctx, esDosagePhase, subtract, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
+        outPutData(cluster, hourTime, ctx, esDosagePhase, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
         //=================下面用redis 存储阶段开始时间结束时间=============================
 
         Tuple2<LocalDateTime, LocalDateTime> dayTime = value.f3;
@@ -121,7 +109,7 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
         outPutData(cluster, monthTime, ctx, esDosagePhase, EStep.ONE_MONTH.getName(), monthTimeOutputTag);
     }
 
-    private void outPutData(JedisCluster cluster, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Context ctx, EsDosagePhase esDosagePhase, String step, OutputTag<EsDosage> outputTag) throws Exception {
+    private void outPutData(JedisCluster cluster, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Context ctx, EsDosagePhase esDosagePhase, String step, OutputTag<Tuple2<String, EsDosage>> outputTag) throws Exception {
         String key = esDosagePhase.getFeed_id() + DateUtil.toEpochSecond(tupleTime.f0) + DateUtil.toEpochSecond(tupleTime.f1);
         String startTimeValue = cluster.hget(key, PropertiesConstants.START_TIME);
         double value = 0.0;
@@ -136,11 +124,11 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
         cluster.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
         cluster.expire(key, 35 * 24 * 60 * 60);//设置35天过期
 
-        EsDosage esDosage = new EsDosage(esDosagePhase.getId(), esDosagePhase.getFeed_id(), value,
+        EsDosage esDosage = new EsDosage(esDosagePhase.getFeed_id(), value,
                 DateUtil.toEpochSecond(tupleTime.f0), DateUtil.toEpochSecond(tupleTime.f1), DateUtil.formatLocalDateTime(tupleTime.f1)
                 , step, new Date(), new Date());
 
-        ctx.output(outputTag, esDosage);
+        ctx.output(outputTag, new Tuple2<>(key, esDosage));
     }
 
     private void outPutData(MapState<String, Double> curState, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Context ctx, EsDosagePhase esDosagePhase, Double subtract, String step, OutputTag<EsDosage> outputTag) throws Exception {
@@ -151,7 +139,7 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
             Double aDouble = curState.get(key);
             curState.put(key, aDouble + subtract);
         }
-        EsDosage esDosage = new EsDosage(esDosagePhase.getId(), esDosagePhase.getFeed_id(), curState.get(key),
+        EsDosage esDosage = new EsDosage(esDosagePhase.getFeed_id(), curState.get(key),
                 DateUtil.toEpochSecond(tupleTime.f0), DateUtil.toEpochSecond(tupleTime.f1), DateUtil.formatLocalDateTime(tupleTime.f1)
                 , step, new Date(), new Date());
 

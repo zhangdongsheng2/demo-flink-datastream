@@ -50,7 +50,7 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
 
         String valueIds = jedisCluster.hget(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
         if (StringUtils.isEmpty(valueIds)) {
-            log.info("数据没有inputId_feedId<<<{}", value.f1);
+            log.debug("数据没有inputId_feedId<<<{}", value.f1);
             return;
         }
         valueIds = new ObjectMapper().readValue(valueIds, String.class);
@@ -64,7 +64,6 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
         String prop = inputDataSingle.getCode();
 
         //从redis中取出valFeedId和steps
-        System.out.println(inputDataSingle.getInputId());
         String feedAndSteps = jedisCluster.hget(fendTopic, inputDataSingle.getInputId());
         Boolean hasFactItem = false;
 
@@ -87,7 +86,7 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
             computeInputList.forEach(inputIdValueVo -> {
                 computeInputMap.put(inputIdValueVo.getInputId(), inputIdValueVo.getValue());
             });
-            log.info("计算公式步骤inputId={}, feedId={}, computeInputMap={}, steps={}", inputDataSingle.getInputId(), inputDataSingle.getFeedId(), computeInputMap, express);
+            log.debug("计算公式步骤inputId={}, feedId={}, computeInputMap={}, steps={}", inputDataSingle.getInputId(), inputDataSingle.getFeedId(), computeInputMap, express);
         }
 
 
@@ -115,14 +114,14 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
             for (int i = 0; i < arry.length; i++) {
                 if (i == 0) {
                     result = Calculator.conversion(inputDataSingle.getValue() + arry[i]);
-                    log.info("[step" + i + "]计算表达式[" + inputDataSingle.getValue() + arry[i] + "] = " + result);
+                    log.debug("[step" + i + "]计算表达式[" + inputDataSingle.getValue() + arry[i] + "] = " + result);
                 } else {
                     String next = result + arry[i];
                     result = Calculator.conversion(next);
-                    log.info("[step" + i + "]计算表达式[" + next + "] = " + result);
+                    log.debug("[step" + i + "]计算表达式[" + next + "] = " + result);
                 }
             }
-            log.info("计算结果={}", result);
+            log.debug("计算结果={}", result);
             //如果计算结果有问题则不予保存
             if (!"NaN".equals(String.valueOf(result))) {
                 inputDataSingle.setValue(result);

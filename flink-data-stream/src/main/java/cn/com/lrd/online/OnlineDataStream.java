@@ -8,7 +8,6 @@ import com.commerce.commons.schemas.InputDataSchema;
 import com.commerce.commons.utils.ESSinkUtil;
 import com.commerce.commons.utils.ExecutionEnvUtil;
 import com.commerce.commons.utils.InfluxDBConfigUtil;
-import com.commerce.commons.utils.JedisClusterUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -32,9 +31,6 @@ import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommand;
 import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommandDescription;
 import org.apache.flink.streaming.connectors.redis.common.mapper.RedisMapper;
 import org.apache.flink.util.Collector;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.common.xcontent.XContentType;
 
@@ -42,7 +38,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static com.commerce.commons.utils.KafkaConfigUtil.buildKafkaProducerProps;
 import static com.commerce.commons.utils.KafkaConfigUtil.buildKafkaProps;
 
 
@@ -58,11 +53,11 @@ public class OnlineDataStream {
         //启动前准备
         final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
         String fendTopic = parameterTool.get("changed.topic");
-        Producer<String, String> producer = new KafkaProducer<>(buildKafkaProducerProps(parameterTool));    //发送通知 获取公式信息
-        ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"), "1", "1");
-        producer.send(record);
-        producer.close();
-        JedisClusterUtil.getJedisCluster().del(fendTopic);
+//        Producer<String, String> producer = new KafkaProducer<>(buildKafkaProducerProps(parameterTool));    //发送通知 获取公式信息
+//        ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"), "1", "1");
+//        producer.send(record);
+//        producer.close();
+//        JedisClusterUtil.getJedisCluster().del(fendTopic);
 
         //创建Flink 运行环境
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
@@ -79,11 +74,11 @@ public class OnlineDataStream {
                 boolean b = StringUtils.isNotEmpty(value.getSn()) && StringUtils.isNotEmpty(value.getAdd());
                 if (!b) {
                     //异常数据. 如果记录在这操作
-                    log.info("异常数据: {}" + value.getInputData());
+                    log.debug("异常数据: {}" + value.getInputData());
                 }
                 boolean dataNotEmpty = CollectionUtils.isNotEmpty(value.getData());
                 if (!dataNotEmpty) {
-                    log.info("数值为空数据: {}", value);
+                    log.debug("数值为空数据: {}", value);
                 }
                 return b && dataNotEmpty;
             }
@@ -98,64 +93,6 @@ public class OnlineDataStream {
             }
         });
 
-//        SingleOutputStreamOperator<String> process = singleData.flatMap(new FlatMapFunction<InputDataSingle, InputDataSingle>() {
-//            @Override
-//            public void flatMap(InputDataSingle value, Collector<InputDataSingle> out) throws Exception {
-//                out.collect(value);
-//            }
-//        }).keyBy(InputDataSingle::getSn)
-//                .flatMap(new RichFlatMapFunction<InputDataSingle, Tuple2<String, String>>() {
-//                    private ValueState<Boolean> isExist;
-//                    private MapState<String, Double> timeState;
-//
-//                    @Override
-//                    public void open(Configuration parameters) throws Exception {
-//                        MapStateDescriptor<String, Double> timeStateDescriptor = new MapStateDescriptor<>("timeState",
-//                                TypeInformation.of(new TypeHint<String>() {
-//                                }),
-//                                TypeInformation.of(new TypeHint<Double>() {
-//                                }));
-//                        // 状态 TTL 相关配置，过期时间设定为 36 小时
-//                        StateTtlConfig ttlConfig = StateTtlConfig
-//                                .newBuilder(Time.hours(36))
-//                                .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
-//                                .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
-//                                .cleanupIncrementally(10, false)
-//                                .build();
-//                        // 开启 TTL
-//                        timeStateDescriptor.enableTimeToLive(ttlConfig);
-//                        // 从状态中恢复 timeState
-//                        this.timeState = getRuntimeContext().getMapState(timeStateDescriptor);
-//                        ValueStateDescriptor<Boolean> keyedStateDuplicated =
-//                                new ValueStateDescriptor<>("ValueState", TypeInformation.of(new TypeHint<Boolean>() {
-//                                }));
-//                        // 从状态后端恢复状态
-//                        isExist = getRuntimeContext().getState(keyedStateDuplicated);
-//                    }
-//
-//                    @Override
-//                    public void flatMap(InputDataSingle value, Collector<Tuple2<String, String>> out) throws Exception {
-//                        System.out.println(this+"==========="+value.getSn());
-//                        timeState.put("aaa", 0.0);
-//                        if (null == isExist.value()) {
-//                            isExist.update(true);
-//                            out.collect(new Tuple2<>("InputDataSingleInputDataSingle", value.getSn()));
-//                        }
-//                    }
-//                })
-//                .process(new ProcessFunction<Tuple2<String, String>, String>() {
-//                    @Override
-//                    public void processElement(Tuple2<String, String> value, Context ctx, Collector<String> out) throws Exception {
-//                        ctx.output(new OutputTag<String>(value.f0) {
-//                        }, value.f1.toString());
-//                    }
-//                });
-//
-//        process.print();
-//        process.getSideOutput(new OutputTag<String>("InputDataSingleInputDataSingle") {
-//        }).print("aaaaaaaaaaaaaaaaaaaaaa");
-
-
         SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2Stream = singleData.map(new MapFunction<InputDataSingle, Tuple2<String, InputDataSingle>>() {
             @Override
             public Tuple2<String, InputDataSingle> map(InputDataSingle inputData) throws Exception {
@@ -168,6 +105,8 @@ public class OnlineDataStream {
         });
 
 //        tuple2Stream.print();
+
+
         //初始化公式
 //        initFeedItem(fendTopic, env, props, JedisClusterUtil.getJedisNodes());
 
@@ -175,15 +114,15 @@ public class OnlineDataStream {
 //        createInputIdFeedId(tuple2Stream);
 
         //校准数据
-//        SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator = stCalibration(fendTopic, tuple2Stream);
+        SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator = stCalibration(fendTopic, tuple2Stream);
 
         //校准数据存储
 //        stCalibrationSink(tuple2SingleOutputStreamOperator);
 
         //用量统计
-//        stPreprocessor(tuple2SingleOutputStreamOperator);
+        stPreprocessor(tuple2SingleOutputStreamOperator);
 
-        env.execute("flink kafka connector");
+        env.execute("online data stream");
     }
 
     /*
@@ -207,11 +146,11 @@ public class OnlineDataStream {
                     @Override
                     public void flatMap(String value, Collector<Map<String, Object>> out) throws Exception {
                         try {
-                            log.info("接收到初始化公式>>>>>>>>>steps={}", value);
+                            log.debug("接收到初始化公式>>>>>>>>>steps={}", value);
                             ObjectMapper mapper = new ObjectMapper();
                             out.collect(mapper.readValue(value, Map.class));
                         } catch (IOException e) {
-                            log.info("公式解析出错>>>{}", value);
+                            log.debug("公式解析出错>>>{}", value);
                         }
                     }
                 }).addSink(new RedisSink<Map<String, Object>>(new FlinkJedisClusterConfig.Builder().setNodes(jedisClusterNodes).build(), new RedisMapper<Map<String, Object>>() {
@@ -257,41 +196,43 @@ public class OnlineDataStream {
      * 用量统计依赖状态缓存, 如果状态出问题当天和月用量会计算错误.  状态路径不能随便更改
      */
     private static void stPreprocessor(SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator) {
-        SingleOutputStreamOperator<EsDosagePhase> process = tuple2SingleOutputStreamOperator
+        SingleOutputStreamOperator<Tuple2<String, EsDosagePhase>> process = tuple2SingleOutputStreamOperator
                 .flatMap(new PreprocessorFilterFlatMap())
                 .flatMap(new PreprocessorTimeFlatMap())
                 .keyBy(0)
                 .process(new KeyedStatePreprocessor());
 
         //原始数据输出到原始数据库
-        ESSinkUtil.addSink(3, process, new ElasticsearchSinkFunction<EsDosagePhase>() {
+        ESSinkUtil.addSink(3, process, new ElasticsearchSinkFunction<Tuple2<String, EsDosagePhase>>() {
             @Override
-            public void process(EsDosagePhase esDosagePhase, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
+            public void process(Tuple2<String, EsDosagePhase> tuple2, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
                 requestIndexer.add(Requests.indexRequest()
-                        .index("dosage_phase")
+                        .index("dosage_phase_temp")
                         .type("_doc")
-                        .id(esDosagePhase.getId())
-                        .source(JSONObject.toJSONString(esDosagePhase), XContentType.JSON));
+                        .id(tuple2.f0)
+                        .source(JSONObject.toJSONString(tuple2.f1), XContentType.JSON));
+                log.info("ES 写入数据dosage_phase_temp <<<{}", tuple2.f1);
             }
         });
 
         //统计数据输出到不同的数据库 ES
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc("dosage_half"));
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc("dosage_day"));
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc("dosage_hour"));
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc("dosage_month"));
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc("dosage_half_temp"));
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc("dosage_hour_temp"));
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc("dosage_day_temp"));
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc("dosage_month_temp"));
 
     }
 
-    private static ElasticsearchSinkFunction<EsDosage> getESSinkFunc(String index) {
-        return new ElasticsearchSinkFunction<EsDosage>() {
+    private static ElasticsearchSinkFunction<Tuple2<String, EsDosage>> getESSinkFunc(String index) {
+        return new ElasticsearchSinkFunction<Tuple2<String, EsDosage>>() {
             @Override
-            public void process(EsDosage esDosage, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
+            public void process(Tuple2<String, EsDosage> tuple2, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
                 requestIndexer.add(Requests.indexRequest()
                         .index(index)
                         .type("_doc")
-                        .id(esDosage.getId())
-                        .source(JSONObject.toJSONString(esDosage), XContentType.JSON));
+                        .id(tuple2.f0)
+                        .source(JSONObject.toJSONString(tuple2.f1), XContentType.JSON));
+                log.info("ES 写入数据" + index + " <<<{}", tuple2);
             }
         };
     }

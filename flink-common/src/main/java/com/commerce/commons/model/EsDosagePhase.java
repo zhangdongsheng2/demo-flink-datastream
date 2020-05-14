@@ -15,7 +15,6 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 public class EsDosagePhase {
-    private String id;
 
     private String feed_id;
 

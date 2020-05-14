@@ -3,6 +3,7 @@ package cn.com.lrd.functions;
 import com.commerce.commons.config.InfluxDBConfig;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.utils.DateUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
  * @author: zhangdongsheng
  * @date: 2020/5/11 11:38
  */
+@Slf4j
 public class InfluxDBSink extends RichSinkFunction<InputDataSingle> {
 
     private final InfluxDBConfig influxDBConfig;
@@ -56,6 +58,7 @@ public class InfluxDBSink extends RichSinkFunction<InputDataSingle> {
 
         Point point = builder.build();
         influxDBClient.write(point);
+        log.info("InfluxDB 写入数据mydb2 <<<{}", input);
     }
 
     @Override

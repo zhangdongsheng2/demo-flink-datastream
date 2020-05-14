@@ -41,6 +41,7 @@ public class JedisClusterUtil {
      * @throws Exception
      */
     public static JedisCluster getJedisCluster() throws Exception {
+        System.out.println("获取getJedisCluster===========================================");
         if (jedisCluster == null) {
             synchronized (JedisClusterUtil.class) {
                 jedisCluster = reloadJedisCluster();

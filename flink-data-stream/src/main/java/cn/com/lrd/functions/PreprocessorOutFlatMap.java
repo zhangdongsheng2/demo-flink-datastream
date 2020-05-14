@@ -57,8 +57,8 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
             return;
         }
         lastTime.put(inputDataSingle.getFeedId(), longTime);
-
-        EsDosagePhase esDosagePhase = new EsDosagePhase(inputDataSingle.getFeedId() + "_" + inputDataSingle.getTime(), inputDataSingle.getFeedId(), inputDataSingle.getCode(), inputDataSingle.getValue(), inputDataSingle.getTime(), new Date(), new Date());
+//inputDataSingle.getFeedId() + "_" + inputDataSingle.getTime(),
+        EsDosagePhase esDosagePhase = new EsDosagePhase(inputDataSingle.getFeedId(), inputDataSingle.getCode(), inputDataSingle.getValue(), inputDataSingle.getTime(), new Date(), new Date());
         out.collect(new Tuple3<>(phaseOutputTag, esDosagePhase, null));
 
         //当前Feed 上一笔数据
@@ -113,7 +113,7 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
         cluster.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
         cluster.expire(key, 35 * 24 * 60 * 60);//设置35天过期
 
-        EsDosage esDosage = new EsDosage(esDosagePhase.getId(), esDosagePhase.getFeed_id(), value,
+        EsDosage esDosage = new EsDosage(esDosagePhase.getFeed_id(), value,
                 DateUtil.toEpochSecond(tupleTime.f0), DateUtil.toEpochSecond(tupleTime.f1), DateUtil.formatLocalDateTime(tupleTime.f1)
                 , step, new Date(), new Date());
 
@@ -128,7 +128,7 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
             Double aDouble = curState.get(key);
             curState.put(key, aDouble + subtract);
         }
-        EsDosage esDosage = new EsDosage(esDosagePhase.getId(), esDosagePhase.getFeed_id(), curState.get(key),
+        EsDosage esDosage = new EsDosage(esDosagePhase.getFeed_id(), curState.get(key),
                 DateUtil.toEpochSecond(tupleTime.f0), DateUtil.toEpochSecond(tupleTime.f1), DateUtil.formatLocalDateTime(tupleTime.f1)
                 , step, new Date(), new Date());
 

@@ -1,7 +1,6 @@
 package cn.com.lrd.online;
 
 import com.commerce.commons.utils.DateUtil;
-import com.commerce.commons.utils.JedisClusterUtil;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,7 +28,7 @@ public class Test {
 //        System.out.println( JedisClusterUtil.getJedisCluster().hgetAll("aaaaaa"));
 
 //查询公式是否存在 根据inputID
-        System.out.println(JedisClusterUtil.getJedisCluster().hget("dev2-rest-b-config-to-calibration", "cdb053c53ea8414fa64c8cb43298b373"));
+//        System.out.println(JedisClusterUtil.getJedisCluster().hget("dev2-rest-b-config-to-calibration", "cdb053c53ea8414fa64c8cb43298b373"));
 
         //10000015_A10_1_2
 //        System.out.println( JedisClusterUtil.getJedisCluster().hget("larunda.input.feed.key","10000015_A10_1_2"));
@@ -38,6 +37,8 @@ public class Test {
 
 //        System.out.println( new ObjectMapper().readValue(JedisClusterUtil.getJedisCluster().hget(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY),"10000025_A103_1_11"), String.class));
 
+
+//        System.out.println( JedisPool.getShardedJedisPool().getResource().hget("larunda.input.feed.key","10000015_A10_1_2"));
 
 //kafka 生产者
 //        final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);

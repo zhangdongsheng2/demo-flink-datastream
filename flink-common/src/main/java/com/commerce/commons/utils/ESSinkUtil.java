@@ -19,7 +19,7 @@ public class ESSinkUtil {
     public static <T> void addSink(int parallelism, DataStream<T> data, ElasticsearchSinkFunction<T> func) {
         ElasticsearchSink.Builder<T> esSinkBuilder =
                 new ElasticsearchSink.Builder<>(ESSinkUtil.getEsAddresses(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.ELASTICSEARCH_HOSTS)), func);
-//        esSinkBuilder.setBulkFlushMaxActions(bulkFlushMaxActions);
+        esSinkBuilder.setBulkFlushMaxActions(50);
 //        esSinkBuilder.setFailureHandler(new RetryRequestFailureHandler());
         //xpack security
         data.addSink(esSinkBuilder.build()).setParallelism(parallelism);

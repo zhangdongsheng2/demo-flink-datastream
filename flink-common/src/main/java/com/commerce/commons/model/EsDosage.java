@@ -15,8 +15,6 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 public class EsDosage {
-    private String id;
-
     private String feed_id;
 
     private Double data_value;

@@ -32,7 +32,7 @@ public class PreprocessorTimeFlatMap implements FlatMapFunction<InputDataSingle,
         LocalDateTime dayStartTime = LocalDateTime.of(localDateTime.toLocalDate(), LocalTime.MIN);
         LocalDateTime dayEndTime = dayStartTime.plusDays(1);
         //time 属于哪个月
-        LocalDateTime monthStartTime = LocalDateTime.of(localDateTime.getYear(), localDateTime.getMonth(), 0, 0, 0);
+        LocalDateTime monthStartTime = LocalDateTime.of(localDateTime.getYear(), localDateTime.getMonth(), 1, 0, 0);
         LocalDateTime monthEndTime = monthStartTime.plusMonths(1);
 
 

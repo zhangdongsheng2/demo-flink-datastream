@@ -26,6 +26,7 @@ public class InfluxDBConfigUtil {
                 .flushDurationTimeUnit(TimeUnit.MILLISECONDS)
                 .enableGzip(parameterTool.getBoolean(PropertiesConstants.INFLUXDB_ENABLEGZIP))
                 .createDatabase(parameterTool.getBoolean(PropertiesConstants.INFLUXDB_CREATEDATABASE))
+                .measurement(parameterTool.get(PropertiesConstants.INFLUXDB_MEASUREMENT))
                 .build();
     }
 }
