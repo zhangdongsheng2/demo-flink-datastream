@@ -71,4 +71,9 @@ public interface PropertiesConstants {
     String HBASE_TABLE_NAME = "hbase.table.name";
     String HBASE_COLUMN_NAME = "hbase.column.name";
 
+
+    //redis 统计用量使用
+    String START_TIME = "startTime";
+    String END_TIME = "endTime";
 }
+

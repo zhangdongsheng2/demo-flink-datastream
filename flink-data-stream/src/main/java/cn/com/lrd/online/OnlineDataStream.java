@@ -98,17 +98,34 @@ public class OnlineDataStream {
             }
         });
 
-//        SingleOutputStreamOperator<Object> process = singleData.flatMap(new FlatMapFunction<InputDataSingle, InputDataSingle>() {
+//        SingleOutputStreamOperator<String> process = singleData.flatMap(new FlatMapFunction<InputDataSingle, InputDataSingle>() {
 //            @Override
 //            public void flatMap(InputDataSingle value, Collector<InputDataSingle> out) throws Exception {
 //                out.collect(value);
 //            }
-//        }).keyBy(InputDataSingle::getCode)
-//                .process(new KeyedProcessFunction<String, InputDataSingle, Object>() {
+//        }).keyBy(InputDataSingle::getSn)
+//                .flatMap(new RichFlatMapFunction<InputDataSingle, Tuple2<String, String>>() {
 //                    private ValueState<Boolean> isExist;
+//                    private MapState<String, Double> timeState;
 //
 //                    @Override
 //                    public void open(Configuration parameters) throws Exception {
+//                        MapStateDescriptor<String, Double> timeStateDescriptor = new MapStateDescriptor<>("timeState",
+//                                TypeInformation.of(new TypeHint<String>() {
+//                                }),
+//                                TypeInformation.of(new TypeHint<Double>() {
+//                                }));
+//                        // 状态 TTL 相关配置，过期时间设定为 36 小时
+//                        StateTtlConfig ttlConfig = StateTtlConfig
+//                                .newBuilder(Time.hours(36))
+//                                .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
+//                                .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
+//                                .cleanupIncrementally(10, false)
+//                                .build();
+//                        // 开启 TTL
+//                        timeStateDescriptor.enableTimeToLive(ttlConfig);
+//                        // 从状态中恢复 timeState
+//                        this.timeState = getRuntimeContext().getMapState(timeStateDescriptor);
 //                        ValueStateDescriptor<Boolean> keyedStateDuplicated =
 //                                new ValueStateDescriptor<>("ValueState", TypeInformation.of(new TypeHint<Boolean>() {
 //                                }));
@@ -117,11 +134,20 @@ public class OnlineDataStream {
 //                    }
 //
 //                    @Override
-//                    public void processElement(InputDataSingle value, Context ctx, Collector<Object> out) throws Exception {
-//                        if (null == isExist.value())
+//                    public void flatMap(InputDataSingle value, Collector<Tuple2<String, String>> out) throws Exception {
+//                        System.out.println(this+"==========="+value.getSn());
+//                        timeState.put("aaa", 0.0);
+//                        if (null == isExist.value()) {
 //                            isExist.update(true);
-//                        ctx.output(new OutputTag<String>("InputDataSingleInputDataSingle") {
-//                        }, value.getSn());
+//                            out.collect(new Tuple2<>("InputDataSingleInputDataSingle", value.getSn()));
+//                        }
+//                    }
+//                })
+//                .process(new ProcessFunction<Tuple2<String, String>, String>() {
+//                    @Override
+//                    public void processElement(Tuple2<String, String> value, Context ctx, Collector<String> out) throws Exception {
+//                        ctx.output(new OutputTag<String>(value.f0) {
+//                        }, value.f1.toString());
 //                    }
 //                });
 //
@@ -233,7 +259,7 @@ public class OnlineDataStream {
     private static void stPreprocessor(SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator) {
         SingleOutputStreamOperator<EsDosagePhase> process = tuple2SingleOutputStreamOperator
                 .flatMap(new PreprocessorFilterFlatMap())
-                .map(new PreprocessorTimeMap())
+                .flatMap(new PreprocessorTimeFlatMap())
                 .keyBy(0)
                 .process(new KeyedStatePreprocessor());
 

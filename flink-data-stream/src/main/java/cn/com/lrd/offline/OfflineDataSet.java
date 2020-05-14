@@ -55,16 +55,27 @@ public class OfflineDataSet {
 
     public static void main(String[] args) throws Exception {
         ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
-        String fendTopic = parameterTool.get("changed.topic");
 //        String sn = parameterTool.get("sn");
 //        String type = parameterTool.get("type");
 //        String addr = parameterTool.get("addr");
 //        String stime = parameterTool.get("stime");
 //        String etime = parameterTool.get("etime");
 
-        String sn = "010000001";
-        String type = "1";
-        String addr = "1000";
+        String parameters = parameterTool.get("parameters");
+        List<AlertVo> alertVos = JSONObject.parseArray(parameters, AlertVo.class);
+        for (AlertVo alertVo : alertVos) {
+            run(alertVo, parameterTool);
+        }
+    }
+
+
+    public static void run(AlertVo args, ParameterTool parameterTool) throws Exception {
+
+        String fendTopic = parameterTool.get("changed.topic");
+
+//        String sn = "010000001";
+//        String type = "1";
+//        String addr = "1000";
 
 
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
@@ -75,21 +86,21 @@ public class OfflineDataSet {
                     @Override
                     protected Scan getScanner() {
                         Scan scan = new Scan();
-//                long start = DateUtil.parseStrDateTimeSec(stime);
-//                long end = DateUtil.parseStrDateTimeSec(etime);
+                        long start = DateUtil.parseStrDateTimeSec(args.getStime());
+                        long end = DateUtil.parseStrDateTimeSec(args.getEtime());
                         scan.addColumn(INFO, shuju);
                         scan.addColumn(INFO, time);
                         scan.addColumn(INFO, topic);
                         scan.addColumn(INFO, delay);
                         //开始范围
-                        scan.setStartRow(Bytes.toBytes("01000000110001583032500"));
+//                        scan.setStartRow(Bytes.toBytes("01000000110001583032500"));
                         //结束范围
-                        scan.setStopRow(Bytes.toBytes("01000000110001588302900"));
+//                        scan.setStopRow(Bytes.toBytes("01000000110001588302900"));
 
                         //开始范围
-//                scan.setStartRow(Bytes.toBytes(new StringBuilder(sn).reverse().toString() + "" + type + "" + addr + "" + start));
+                        scan.setStartRow(Bytes.toBytes(new StringBuilder(args.getSn()).reverse().toString() + "" + args.getType() + "" + args.getAddr() + "" + start));
                         //结束范围
-//                scan.setStopRow(Bytes.toBytes(new StringBuilder(sn).reverse().toString() + "" + type + "" + addr + "" + end));
+                        scan.setStopRow(Bytes.toBytes(new StringBuilder(args.getSn()).reverse().toString() + "" + args.getType() + "" + args.getAddr() + "" + end));
 
                         // 0为正常
                         SingleColumnValueExcludeFilter filter = new SingleColumnValueExcludeFilter(Bytes.toBytes("info"), Bytes.toBytes("status"), CompareFilter.CompareOp.EQUAL, Bytes.toBytes(0));
@@ -112,7 +123,7 @@ public class OfflineDataSet {
                         String timeStr = DateUtil.formatLocalDateTime(LocalDateTime.ofInstant(instant, ZoneId.systemDefault()));
                         String topic = Bytes.toString(result.getValue(INFO, OfflineDataSet.topic));
                         int delay = Bytes.toInt(result.getValue(INFO, OfflineDataSet.delay));
-                        return new Tuple2<>(key, new InputData(sn, topic, timeStr, type, addr, codeValueVos, 1, null, delay));
+                        return new Tuple2<>(key, new InputData(args.getSn(), topic, timeStr, args.getType(), args.getAddr(), codeValueVos, 1, null, delay));
                     }
 
                 })
@@ -146,16 +157,16 @@ public class OfflineDataSet {
         FlatMapOperator<Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle>,
                 Tuple3<String, EsDosagePhase, EsDosage>>
                 tuple6Tuple3FlatMapOperator = tuple2Tuple2FlatMapOperator.flatMap(new PreprocessorFilterFlatMap())
-                .map(new PreprocessorTimeMap())
-                .flatMap(new PreprocessorPartitionFlatMap());
+                .flatMap(new PreprocessorTimeFlatMap())
+                .flatMap(new PreprocessorOutFlatMap());
 
 
         //统计数据输出到不同的数据库 ES
-        outputES("dosage_phase", PreprocessorPartitionFlatMap.phaseOutputTag, 1, tuple6Tuple3FlatMapOperator);
-        outputES("dosage_half", PreprocessorPartitionFlatMap.halfTimeOutputTag, 2, tuple6Tuple3FlatMapOperator);
-        outputES("dosage_hour", PreprocessorPartitionFlatMap.hourTimeOutputTag, 2, tuple6Tuple3FlatMapOperator);
-        outputES("dosage_day", PreprocessorPartitionFlatMap.dayTimeOutputTag, 2, tuple6Tuple3FlatMapOperator);
-        outputES("dosage_month", PreprocessorPartitionFlatMap.monthTimeOutputTag, 2, tuple6Tuple3FlatMapOperator);
+        outputES("dosage_phase", PreprocessorOutFlatMap.phaseOutputTag, 1, tuple6Tuple3FlatMapOperator);
+        outputES("dosage_half", PreprocessorOutFlatMap.halfTimeOutputTag, 2, tuple6Tuple3FlatMapOperator);
+        outputES("dosage_hour", PreprocessorOutFlatMap.hourTimeOutputTag, 2, tuple6Tuple3FlatMapOperator);
+        outputES("dosage_day", PreprocessorOutFlatMap.dayTimeOutputTag, 2, tuple6Tuple3FlatMapOperator);
+        outputES("dosage_month", PreprocessorOutFlatMap.monthTimeOutputTag, 2, tuple6Tuple3FlatMapOperator);
     }
 
     private static void outputES(String index, String tag, int tuple, FlatMapOperator<Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>,
