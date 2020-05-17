@@ -1,5 +1,6 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.enumeration.EStep;
 import com.commerce.commons.model.EsDosage;
@@ -52,13 +53,14 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        cluster = JedisClusterUtil.getJedisCluster();
+        cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
         // 状态 TTL 相关配置，过期时间设定为 36 小时
         StateTtlConfig ttlConfig = StateTtlConfig
                 .newBuilder(Time.hours(36))
                 .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
                 .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
-                .cleanupIncrementally(10, false)
+                .cleanupFullSnapshot() //1.7 版本的.
+//                .cleanupIncrementally(10, false)  //1.10.0 版本的方法
                 .build();
         ValueStateDescriptor<Long> lastTime = new ValueStateDescriptor<>("lastTime", TypeInformation.of(new TypeHint<Long>() {
         }));
@@ -110,6 +112,8 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
     }
 
     private void outPutData(JedisCluster cluster, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Context ctx, EsDosagePhase esDosagePhase, String step, OutputTag<Tuple2<String, EsDosage>> outputTag) throws Exception {
+        LocalDateTime localDateTime = DateUtil.parseLocalDateTime(esDosagePhase.getData_time()).withSecond(0);
+
         String key = esDosagePhase.getFeed_id() + DateUtil.toEpochSecond(tupleTime.f0) + DateUtil.toEpochSecond(tupleTime.f1);
         String startTimeValue = cluster.hget(key, PropertiesConstants.START_TIME);
         double value = 0.0;
@@ -117,6 +121,13 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
             cluster.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
         } else {
             String startValue = startTimeValue.split("#")[1];
+            boolean equals = localDateTime.equals(tupleTime.f0);
+            if (equals) {
+                //离线处理, 如果数据时间等于开始时间 就重新设置开始时间数据.
+                cluster.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+                startValue = "0.0";
+            }
+
             BigDecimal subtract = BigDecimal.valueOf(esDosagePhase.getData_value()).subtract(new BigDecimal(startValue));
             value = subtract.doubleValue();
         }

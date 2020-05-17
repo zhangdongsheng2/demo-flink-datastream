@@ -1,8 +1,8 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.model.InputDataSingle;
-import com.commerce.commons.utils.ExecutionEnvUtil;
 import com.commerce.commons.utils.JedisClusterUtil;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
@@ -32,7 +32,7 @@ public class KeyedStateDeduplication extends KeyedProcessFunction<Tuple, Tuple2<
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        cluster = JedisClusterUtil.getJedisCluster();
+        cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
 
         ValueStateDescriptor<Boolean> keyedStateDuplicated =
                 new ValueStateDescriptor<>("KeyedStateDeduplication", TypeInformation.of(new TypeHint<Boolean>() {
@@ -45,7 +45,7 @@ public class KeyedStateDeduplication extends KeyedProcessFunction<Tuple, Tuple2<
     public void processElement(Tuple2<String, InputDataSingle> stringInputDataTuple2, Context context, Collector<InputDataSingle> collector) throws Exception {
         if (null == isExist.value()) {
             isExist.update(true);
-            Boolean hexists = cluster.hexists(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), stringInputDataTuple2.f0);
+            Boolean hexists = cluster.hexists(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), stringInputDataTuple2.f0);
             if (!hexists)
                 collector.collect(stringInputDataTuple2.f1);
         }

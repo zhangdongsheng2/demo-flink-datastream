@@ -3,6 +3,7 @@ package com.commerce.commons.model;
 import lombok.Data;
 import org.apache.kafka.common.internals.Topic;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -12,7 +13,7 @@ import java.util.Set;
  * @date: 2020/5/8 11:18
  */
 @Data
-public class IotDevice {
+public class IotDevice implements Serializable {
     private String id;
 
     private String devName;

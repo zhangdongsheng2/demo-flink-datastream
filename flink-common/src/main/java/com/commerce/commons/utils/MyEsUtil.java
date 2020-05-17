@@ -7,7 +7,8 @@ import io.searchbox.core.Bulk;
 import io.searchbox.core.BulkResult;
 import io.searchbox.core.Index;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.util.Objects;
 
@@ -18,7 +19,7 @@ import java.util.Objects;
  */
 @Slf4j
 public class MyEsUtil {
-    private static String ES_HOST = "http://hadoop1";
+    private static String ES_HOST = "http://172.16.24.31";
     private static int ES_HTTP_PORT = 9200;
     private static JestClientFactory factory = null;
 
@@ -55,16 +56,14 @@ public class MyEsUtil {
     }
 
 
-    public static void executeIndexBulk(String indexName, Iterable<Object> list, String idColumn) throws Exception {
+    public static void executeIndexBulk(String indexName, Iterable<Tuple2<String, Object>> list) throws Exception {
         JestClient jestClient = getJestClient();
         Bulk.Builder bulkBuilder = new Bulk.Builder().defaultIndex(indexName).defaultType("_doc");
-        for (Object doc : list) {
+        for (Tuple2<String, Object> stringObjectTuple2 : list) {
+            Object doc = stringObjectTuple2.f1;
             Index.Builder indexBuilder = new Index.Builder(doc);
-            if (idColumn != null && idColumn.length() > 0) {
-                String idValue = BeanUtils.getProperty(doc, idColumn);
-                if (idValue != null) {
-                    indexBuilder.id(idValue);
-                }
+            if (StringUtils.isNotEmpty(stringObjectTuple2.f0)) {
+                indexBuilder.id(stringObjectTuple2.f0);
             }
             Index index = indexBuilder.build();
 

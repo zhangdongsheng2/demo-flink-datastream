@@ -3,6 +3,7 @@ package com.commerce.commons.utils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.flink.api.java.utils.ParameterTool;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPoolConfig;
@@ -25,13 +26,13 @@ public class JedisClusterUtil {
     /**
      * 初始化jedisCluster对象
      */
-    static {
-        try {
-            jedisCluster = reloadJedisCluster();
-        } catch (Exception e) {
-            logger.error(e.getMessage(), e);
-        }
-    }
+//    static {
+//        try {
+//            jedisCluster = reloadJedisCluster();
+//        } catch (Exception e) {
+//            logger.error(e.getMessage(), e);
+//        }
+//    }
 
     /**
      * 集群模式
@@ -40,11 +41,11 @@ public class JedisClusterUtil {
      * @return
      * @throws Exception
      */
-    public static JedisCluster getJedisCluster() throws Exception {
+    public static JedisCluster getJedisCluster(ParameterTool parameterTool) throws Exception {
         System.out.println("获取getJedisCluster===========================================");
         if (jedisCluster == null) {
             synchronized (JedisClusterUtil.class) {
-                jedisCluster = reloadJedisCluster();
+                jedisCluster = reloadJedisCluster(parameterTool);
             }
         }
         return jedisCluster;
@@ -57,7 +58,7 @@ public class JedisClusterUtil {
      * @return
      * @throws Exception
      */
-    public static JedisCluster reloadJedisCluster() throws Exception {
+    public static JedisCluster reloadJedisCluster(ParameterTool parameterTool) throws Exception {
         JedisPoolConfig config = new JedisPoolConfig();
         // 最大连接数
         config.setMaxTotal(1000);
@@ -74,7 +75,7 @@ public class JedisClusterUtil {
 
         logger.info("初始化实体");
         JedisCluster cluster;
-        String redisAddrCfg = ExecutionEnvUtil.getParameterTool().get("redis.address");
+        String redisAddrCfg = parameterTool.get("redis.address");
         logger.info("******redis集群配置：" + redisAddrCfg);
         if (StringUtils.isEmpty(redisAddrCfg) || redisAddrCfg.split(",").length == 0) {
             throw new Exception("System.properties中REDIS_ADDR_CFG属性为空");
@@ -93,9 +94,9 @@ public class JedisClusterUtil {
     }
 
 
-    public static Set<InetSocketAddress> getJedisNodes() throws Exception {
+    public static Set<InetSocketAddress> getJedisNodes(ParameterTool parameterTool) throws Exception {
         Set<InetSocketAddress> jedisClusterNodes = new HashSet<InetSocketAddress>();
-        String redisAddrCfg = ExecutionEnvUtil.getParameterTool().get("redis.address");
+        String redisAddrCfg = parameterTool.get("redis.address");
         if (StringUtils.isEmpty(redisAddrCfg) || redisAddrCfg.split(",").length == 0) {
             throw new Exception("System.properties中REDIS_ADDR_CFG属性为空");
         }

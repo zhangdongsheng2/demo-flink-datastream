@@ -1,9 +1,11 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.config.InfluxDBConfig;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.utils.DateUtil;
 import com.commerce.commons.utils.InfluxDBConfigUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.io.RichOutputFormat;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Preconditions;
@@ -20,6 +22,7 @@ import java.util.concurrent.TimeUnit;
  * @author: zhangdongsheng
  * @date: 2020/5/11 11:38
  */
+@Slf4j
 public class InfluxDBOutput extends RichOutputFormat<InputDataSingle> {
 
     private transient InfluxDBConfig influxDBConfig;
@@ -27,7 +30,7 @@ public class InfluxDBOutput extends RichOutputFormat<InputDataSingle> {
 
     @Override
     public void configure(Configuration parameters) {
-        influxDBConfig = Preconditions.checkNotNull(InfluxDBConfigUtil.getInfluxDBConfig(), "InfluxDB client config should not be null");
+        influxDBConfig = Preconditions.checkNotNull(InfluxDBConfigUtil.getInfluxDBConfig(ParameterToolUtil.getParameterTool()), "InfluxDB client config should not be null");
     }
 
     @Override
@@ -56,6 +59,7 @@ public class InfluxDBOutput extends RichOutputFormat<InputDataSingle> {
 
         Point point = builder.build();
         influxDBClient.write(point);
+//        log.info("输出数据到influxdb<<< {}",input);
     }
 
     @Override

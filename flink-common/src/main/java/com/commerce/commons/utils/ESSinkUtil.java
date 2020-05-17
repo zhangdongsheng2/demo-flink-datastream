@@ -1,6 +1,7 @@
 package com.commerce.commons.utils;
 
 import com.commerce.commons.constant.PropertiesConstants;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.connectors.elasticsearch.ElasticsearchSinkFunction;
 import org.apache.flink.streaming.connectors.elasticsearch6.ElasticsearchSink;
@@ -16,13 +17,13 @@ public class ESSinkUtil {
      *
      * @param data 数据
      */
-    public static <T> void addSink(int parallelism, DataStream<T> data, ElasticsearchSinkFunction<T> func) {
+    public static <T> void addSink(int parallelism, DataStream<T> data, ElasticsearchSinkFunction<T> func, ParameterTool parameterTool) {
         ElasticsearchSink.Builder<T> esSinkBuilder =
-                new ElasticsearchSink.Builder<>(ESSinkUtil.getEsAddresses(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.ELASTICSEARCH_HOSTS)), func);
-        esSinkBuilder.setBulkFlushMaxActions(50);
+                new ElasticsearchSink.Builder<>(ESSinkUtil.getEsAddresses(parameterTool.get(PropertiesConstants.ELASTICSEARCH_HOSTS)), func);
+        esSinkBuilder.setBulkFlushMaxActions(2);
 //        esSinkBuilder.setFailureHandler(new RetryRequestFailureHandler());
         //xpack security
-        data.addSink(esSinkBuilder.build()).setParallelism(parallelism);
+        data.addSink(esSinkBuilder.build()).name("ESSink").setParallelism(parallelism);
     }
 
     /**

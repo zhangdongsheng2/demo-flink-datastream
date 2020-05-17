@@ -24,11 +24,13 @@
             <artifactId>flink-connector-kafka_${scala.binary.version}</artifactId>
             <version>${flink.version}</version>
         </dependency>
+
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-streaming-java_${scala.binary.version}</artifactId>
             <version>${flink.version}</version>
         </dependency>
+
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-statebackend-rocksdb_${scala.binary.version}</artifactId>
@@ -37,7 +39,7 @@
 
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-connector-redis_${scala.binary.version}</artifactId>
+            <artifactId>flink-connector-redis_2.11</artifactId>
             <version>1.1.5</version>
         </dependency>
         <!-- Flink End -->
@@ -67,33 +69,38 @@
         <!-- Logging End -->
 
         <!-- JDBC Start-->
-        <dependency>
-            <groupId>org.scalikejdbc</groupId>
-            <artifactId>scalikejdbc_2.11</artifactId>
-            <version>${scalikejdbc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.scalikejdbc</groupId>
-            <artifactId>scalikejdbc-config_2.11</artifactId>
-            <version>${scalikejdbc.version}</version>
-        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>org.scalikejdbc</groupId>-->
+        <!--            <artifactId>scalikejdbc_2.11</artifactId>-->
+        <!--            <version>${scalikejdbc.version}</version>-->
+        <!--        </dependency>-->
+        <!--        <dependency>-->
+        <!--            <groupId>org.scalikejdbc</groupId>-->
+        <!--            <artifactId>scalikejdbc-config_2.11</artifactId>-->
+        <!--            <version>${scalikejdbc.version}</version>-->
+        <!--        </dependency>-->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>${mysql.version}</version>
         </dependency>
         <dependency>
-            <groupId>commons-dbutils</groupId>
-            <artifactId>commons-dbutils</artifactId>
-            <version>1.6</version>
+            <groupId>commons-dbcp</groupId>
+            <artifactId>commons-dbcp</artifactId>
+            <version>1.4</version>
         </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>commons-dbutils</groupId>-->
+        <!--            <artifactId>commons-dbutils</artifactId>-->
+        <!--            <version>1.6</version>-->
+        <!--        </dependency>-->
         <!-- JDBC End-->
         <!--工具-->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-configuration2</artifactId>
-            <version>2.2</version>
-        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>org.apache.commons</groupId>-->
+        <!--            <artifactId>commons-configuration2</artifactId>-->
+        <!--            <version>2.2</version>-->
+        <!--        </dependency>-->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -144,45 +151,28 @@
             <version>2.5.0</version>
         </dependency>
 
-        <!--hadoop-->
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-hadoop-compatibility_${scala.binary.version}</artifactId>
-            <version>${flink.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-mapreduce-client-core</artifactId>
-            <version>2.6.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-common</artifactId>
-            <version>2.7.5</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-hdfs</artifactId>
-            <version>2.7.5</version>
-        </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>${httpclient.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpmime</artifactId>
-            <version>${httpmime.version}</version>
-        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>org.apache.httpcomponents</groupId>-->
+        <!--            <artifactId>httpclient</artifactId>-->
+        <!--            <version>${httpclient.version}</version>-->
+        <!--        </dependency>-->
+        <!--        <dependency>-->
+        <!--            <groupId>org.apache.httpcomponents</groupId>-->
+        <!--            <artifactId>httpmime</artifactId>-->
+        <!--            <version>${httpmime.version}</version>-->
+        <!--        </dependency>-->
         <dependency>
             <groupId>io.searchbox</groupId>
             <artifactId>jest</artifactId>
             <version>5.3.3</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>23.0</version>
+        </dependency>
 
     </dependencies>
 
@@ -219,12 +209,12 @@
                                 </filter>
                             </filters>
                             <!-- 这里防止 依赖的jar包与 flink lib 下的jar包冲突   -->
-                            <!--                            <relocations>-->
-                            <!--                                <relocation>-->
-                            <!--                                    <pattern>org.apache.kafka</pattern>-->
-                            <!--                                    <shadedPattern>org.myshade.kafka</shadedPattern>-->
-                            <!--                                </relocation>-->
-                            <!--                            </relocations>-->
+                            <relocations>
+                                <relocation>
+                                    <pattern>io.searchbox</pattern>
+                                    <shadedPattern>io.mysearchbox</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>

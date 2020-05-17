@@ -50,7 +50,7 @@ public class KafkaConfigUtil {
         props.put("group.id", parameterTool.get(PropertiesConstants.KAFKA_GROUP_ID, DEFAULT_KAFKA_GROUP_ID));
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("auto.offset.reset", "latest");//.sn111 latest none
+        props.put("auto.offset.reset", "latest");//earliest latest none
 
         return props;
     }

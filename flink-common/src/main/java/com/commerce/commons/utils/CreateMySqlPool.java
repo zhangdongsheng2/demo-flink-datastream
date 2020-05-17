@@ -1,7 +1,7 @@
 package com.commerce.commons.utils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.commons.dbcp.BasicDataSource;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -27,7 +27,7 @@ public class CreateMySqlPool {
         dataSource.setPassword("sddt8888");
         //设置连接池的一些参数
         dataSource.setInitialSize(10);
-        dataSource.setMaxTotal(50);
+        dataSource.setMaxIdle(50);
         dataSource.setMinIdle(2);
         log.info("创建dataSource：{}", dataSource);
         return dataSource;

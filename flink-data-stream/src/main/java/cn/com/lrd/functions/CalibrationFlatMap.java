@@ -1,11 +1,11 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.enumeration.FeedValueType;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.model.InputIdValueVo;
 import com.commerce.commons.utils.Calculator;
-import com.commerce.commons.utils.ExecutionEnvUtil;
 import com.commerce.commons.utils.JedisClusterUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,17 +38,18 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        jedisCluster = JedisClusterUtil.getJedisCluster();
+        jedisCluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
     }
 
     @Override
     public void flatMap(Tuple2<String, InputDataSingle> value, Collector<Tuple2<String, InputDataSingle>> out) throws Exception {
-        Boolean hexists = jedisCluster.hexists(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
+//        System.out.println(value.f1.getTime() + "=========================");
+        Boolean hexists = jedisCluster.hexists(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
         if (!hexists || StringUtils.isEmpty(value.f1.getCode())) return;
 
         InputDataSingle inputDataSingle = value.f1;
 
-        String valueIds = jedisCluster.hget(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
+        String valueIds = jedisCluster.hget(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
         if (StringUtils.isEmpty(valueIds)) {
             log.debug("数据没有inputId_feedId<<<{}", value.f1);
             return;

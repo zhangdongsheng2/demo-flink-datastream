@@ -88,7 +88,7 @@ public class DateUtil {
         return Timestamp.valueOf(LocalDateTime.parse(time, DATETIME_FORMATTER)).getTime();
     }
 
-    //yyyy-MM-dd HH:mm:ss 格式日期转换成毫秒
+    //yyyy-MM-dd HH:mm:ss 格式日期转换成秒
     public static long parseStrDateTimeSec(String time) {
         return Timestamp.valueOf(LocalDateTime.parse(time, DATETIME_FORMATTER)).getTime() / 1000;
     }

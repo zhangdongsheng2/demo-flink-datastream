@@ -13,8 +13,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class InfluxDBConfigUtil {
 
-    public static InfluxDBConfig getInfluxDBConfig() {
-        ParameterTool parameterTool = ExecutionEnvUtil.getParameterTool();
+    public static InfluxDBConfig getInfluxDBConfig(ParameterTool parameterTool) {
         //请将下面的这些字段弄成常量
         return InfluxDBConfig.builder()
                 .url(parameterTool.get(PropertiesConstants.INFLUXDB_URL))

@@ -1,13 +1,15 @@
 package cn.com.lrd.online;
 
 import cn.com.lrd.functions.*;
+import cn.com.lrd.utils.EnvUtils;
+import cn.com.lrd.utils.ParameterToolUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.commerce.commons.model.*;
 import com.commerce.commons.schemas.InputDataSchema;
 import com.commerce.commons.utils.ESSinkUtil;
-import com.commerce.commons.utils.ExecutionEnvUtil;
 import com.commerce.commons.utils.InfluxDBConfigUtil;
+import com.commerce.commons.utils.JedisClusterUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -51,7 +53,7 @@ public class OnlineDataStream {
     //--input.topic topic-pub555555 传参示例
     public static void main(String[] args) throws Exception {
         //启动前准备
-        final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
+        final ParameterTool parameterTool = ParameterToolUtil.createParameterTool(args);
         String fendTopic = parameterTool.get("changed.topic");
 //        Producer<String, String> producer = new KafkaProducer<>(buildKafkaProducerProps(parameterTool));    //发送通知 获取公式信息
 //        ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"), "1", "1");
@@ -60,7 +62,7 @@ public class OnlineDataStream {
 //        JedisClusterUtil.getJedisCluster().del(fendTopic);
 
         //创建Flink 运行环境
-        StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
+        StreamExecutionEnvironment env = EnvUtils.prepare(parameterTool);
         Properties props = buildKafkaProps(parameterTool);
         //kafka topic list
         List<String> topics = Arrays.asList(parameterTool.get("emq.topic"), parameterTool.get("restream.topic"), parameterTool.get("restream.init.topic"));
@@ -108,16 +110,16 @@ public class OnlineDataStream {
 
 
         //初始化公式
-//        initFeedItem(fendTopic, env, props, JedisClusterUtil.getJedisNodes());
+        initFeedItem(fendTopic, env, props, JedisClusterUtil.getJedisNodes(ParameterToolUtil.getParameterTool()));
 
         //创建仪表
-//        createInputIdFeedId(tuple2Stream);
+        createInputIdFeedId(tuple2Stream);
 
         //校准数据
         SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator = stCalibration(fendTopic, tuple2Stream);
 
         //校准数据存储
-//        stCalibrationSink(tuple2SingleOutputStreamOperator);
+        stCalibrationSink(tuple2SingleOutputStreamOperator);
 
         //用量统计
         stPreprocessor(tuple2SingleOutputStreamOperator);
@@ -133,7 +135,7 @@ public class OnlineDataStream {
                 .process(new KeyedStateDeduplication())
                 //创建一个连接池, 查询出Schema
                 .flatMap(new QuerySchemasFlatMap()).setParallelism(1)
-                .addSink(new FeedRichSink()).setParallelism(1);
+                .addSink(new FeedRichSink()).setParallelism(1).name("MySQLSink 创建仪表");
     }
 
     /**
@@ -171,7 +173,7 @@ public class OnlineDataStream {
                 String steps = String.valueOf(map.get("steps"));
                 return feedId + "-" + steps + "-" + JSON.toJSONString(map.get("computeInputList"));
             }
-        }));
+        })).name("Redis公式Sink");
     }
 
 
@@ -187,7 +189,7 @@ public class OnlineDataStream {
      */
     private static void stCalibrationSink(SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator) {
         tuple2SingleOutputStreamOperator.map((MapFunction<Tuple2<String, InputDataSingle>, InputDataSingle>) value -> value.f1)
-                .addSink(new InfluxDBSink(InfluxDBConfigUtil.getInfluxDBConfig()));
+                .addSink(new InfluxDBSink(InfluxDBConfigUtil.getInfluxDBConfig(ParameterToolUtil.getParameterTool()))).name("InfluxDBSink 校准数据");
     }
 
 
@@ -213,13 +215,13 @@ public class OnlineDataStream {
                         .source(JSONObject.toJSONString(tuple2.f1), XContentType.JSON));
                 log.info("ES 写入数据dosage_phase_temp <<<{}", tuple2.f1);
             }
-        });
+        }, ParameterToolUtil.getParameterTool());
 
         //统计数据输出到不同的数据库 ES
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc("dosage_half_temp"));
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc("dosage_hour_temp"));
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc("dosage_day_temp"));
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc("dosage_month_temp"));
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc("dosage_half_temp"), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc("dosage_hour_temp"), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc("dosage_day_temp"), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc("dosage_month_temp"), ParameterToolUtil.getParameterTool());
 
     }
 

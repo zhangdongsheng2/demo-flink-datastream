@@ -1,5 +1,6 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.enumeration.*;
 import com.commerce.commons.model.InputDataSingle;
@@ -33,7 +34,7 @@ public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
     public void open(Configuration parameters) throws Exception {
         con = CreateMySqlPool.getConnection();
         statement = con.createStatement();
-        cluster = JedisClusterUtil.getJedisCluster();
+        cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
     }
 
     @Override

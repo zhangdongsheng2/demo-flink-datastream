@@ -1,5 +1,6 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.enumeration.EStep;
 import com.commerce.commons.model.EsDosage;
@@ -11,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple6;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
@@ -29,12 +30,12 @@ import java.util.Map;
  * @date: 2020/5/13 15:30
  */
 @Slf4j
-public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle>, Tuple3<String, EsDosagePhase, EsDosage>> {
-    public static final String phaseOutputTag = "phase";
-    public static final String halfTimeOutputTag = "halfTime";
-    public static final String hourTimeOutputTag = "hourTime";
-    public static final String dayTimeOutputTag = "dayTime";
-    public static final String monthTimeOutputTag = "monthTime";
+public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle>, Tuple4<String, String, EsDosagePhase, EsDosage>> {
+    public static final String phaseOutputTag = "dosage_phase_temp";
+    public static final String halfTimeOutputTag = "dosage_half_temp";
+    public static final String hourTimeOutputTag = "dosage_hour_temp";
+    public static final String dayTimeOutputTag = "dosage_day_temp";
+    public static final String monthTimeOutputTag = "dosage_month_temp";
 
     private Map<String, Double> lastState = new HashMap<>();
     private Map<String, Long> lastTime = new HashMap<>();
@@ -43,11 +44,11 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        cluster = JedisClusterUtil.getJedisCluster();
+        cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
     }
 
     @Override
-    public void flatMap(Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle> value, Collector<Tuple3<String, EsDosagePhase, EsDosage>> out) throws Exception {
+    public void flatMap(Tuple6<String, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, Tuple2<LocalDateTime, LocalDateTime>, InputDataSingle> value, Collector<Tuple4<String, String, EsDosagePhase, EsDosage>> out) throws Exception {
         InputDataSingle inputDataSingle = value.f5;
         long longTime = DateUtil.parseStrDateTime(inputDataSingle.getTime());
         //这里过滤一下乱序数据, 一个feedId 10分钟的基数出现乱序数据就不处理
@@ -57,9 +58,9 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
             return;
         }
         lastTime.put(inputDataSingle.getFeedId(), longTime);
-//inputDataSingle.getFeedId() + "_" + inputDataSingle.getTime(),
+
         EsDosagePhase esDosagePhase = new EsDosagePhase(inputDataSingle.getFeedId(), inputDataSingle.getCode(), inputDataSingle.getValue(), inputDataSingle.getTime(), new Date(), new Date());
-        out.collect(new Tuple3<>(phaseOutputTag, esDosagePhase, null));
+        out.collect(new Tuple4<>(phaseOutputTag, inputDataSingle.getFeedId() + "_" + inputDataSingle.getTime(), esDosagePhase, null));
 
         //当前Feed 上一笔数据
         BigDecimal lastFeedValue = null;
@@ -88,7 +89,7 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
         outPutData(cluster, monthTime, out, esDosagePhase, EStep.ONE_MONTH.getName(), monthTimeOutputTag);
     }
 
-    private void outPutData(JedisCluster cluster, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Collector<Tuple3<String, EsDosagePhase, EsDosage>> out, EsDosagePhase esDosagePhase, String step, String outputTag) throws Exception {
+    private void outPutData(JedisCluster cluster, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Collector<Tuple4<String, String, EsDosagePhase, EsDosage>> out, EsDosagePhase esDosagePhase, String step, String outputTag) throws Exception {
         LocalDateTime localDateTime = DateUtil.parseLocalDateTime(esDosagePhase.getData_time()).withSecond(0);
 
         String key = esDosagePhase.getFeed_id() + DateUtil.toEpochSecond(tupleTime.f0) + DateUtil.toEpochSecond(tupleTime.f1);
@@ -117,10 +118,10 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
                 DateUtil.toEpochSecond(tupleTime.f0), DateUtil.toEpochSecond(tupleTime.f1), DateUtil.formatLocalDateTime(tupleTime.f1)
                 , step, new Date(), new Date());
 
-        out.collect(new Tuple3<>(outputTag, null, esDosage));
+        out.collect(new Tuple4<>(outputTag, key, null, esDosage));
     }
 
-    private void outPutData(Map<String, Double> curState, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Collector<Tuple3<String, EsDosagePhase, EsDosage>> out, EsDosagePhase esDosagePhase, Double subtract, String step, String outputTag) throws Exception {
+    private void outPutData(Map<String, Double> curState, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Collector<Tuple4<String, String, EsDosagePhase, EsDosage>> out, EsDosagePhase esDosagePhase, Double subtract, String step, String outputTag) throws Exception {
         String key = DateUtil.formatTime(tupleTime.f0) + "_" + DateUtil.formatTime(tupleTime.f1);
         if (curState.get(key) == null) {
             curState.put(key, 0.0);
@@ -132,6 +133,6 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
                 DateUtil.toEpochSecond(tupleTime.f0), DateUtil.toEpochSecond(tupleTime.f1), DateUtil.formatLocalDateTime(tupleTime.f1)
                 , step, new Date(), new Date());
 
-        out.collect(new Tuple3<>(outputTag, null, esDosage));
+        out.collect(new Tuple4<>(outputTag, key, null, esDosage));
     }
 }

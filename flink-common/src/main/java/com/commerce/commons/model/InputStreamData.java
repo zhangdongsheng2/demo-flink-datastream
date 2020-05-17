@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 /**
  * @Description InputStreamData
  * 发送给流式计算的对象
@@ -14,7 +16,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class InputStreamData {
+public class InputStreamData implements Serializable {
     private String inputId;
     private String feedId;
     private String topicId;
