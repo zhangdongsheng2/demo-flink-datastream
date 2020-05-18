@@ -99,7 +99,7 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
 //        outPutData(timeState, halfTime, ctx, esDosagePhase, subtract, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
         outPutData(cluster, halfTime, ctx, esDosagePhase, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
 
-        Tuple2<LocalDateTime, LocalDateTime> hourTime = value.f3;
+        Tuple2<LocalDateTime, LocalDateTime> hourTime = value.f2;
 //        outPutData(timeState, hourTime, ctx, esDosagePhase, subtract, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
         outPutData(cluster, hourTime, ctx, esDosagePhase, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
         //=================下面用redis 存储阶段开始时间结束时间=============================
