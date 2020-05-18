@@ -22,9 +22,9 @@ public class CreateMySqlPool {
     public static DataSource getDataSource() {
         BasicDataSource dataSource = new BasicDataSource();
         dataSource.setDriverClassName("com.mysql.jdbc.Driver");
-        dataSource.setUrl("jdbc:mysql://172.16.24.51:3306");
+        dataSource.setUrl("jdbc:mysql://192.168.188.91:3306");
         dataSource.setUsername("sddt");
-        dataSource.setPassword("sddt8888");
+        dataSource.setPassword("zxcvbnm");
         //设置连接池的一些参数
         dataSource.setInitialSize(10);
         dataSource.setMaxIdle(50);

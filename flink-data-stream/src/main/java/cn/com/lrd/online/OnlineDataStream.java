@@ -24,6 +24,9 @@ import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.elasticsearch.ElasticsearchSinkFunction;
 import org.apache.flink.streaming.connectors.elasticsearch.RequestIndexer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
@@ -33,6 +36,9 @@ import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommand;
 import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommandDescription;
 import org.apache.flink.streaming.connectors.redis.common.mapper.RedisMapper;
 import org.apache.flink.util.Collector;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.common.xcontent.XContentType;
 
@@ -40,6 +46,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 
+import static com.commerce.commons.utils.KafkaConfigUtil.buildKafkaProducerProps;
 import static com.commerce.commons.utils.KafkaConfigUtil.buildKafkaProps;
 
 
@@ -55,11 +62,11 @@ public class OnlineDataStream {
         //启动前准备
         final ParameterTool parameterTool = ParameterToolUtil.createParameterTool(args);
         String fendTopic = parameterTool.get("changed.topic");
-//        Producer<String, String> producer = new KafkaProducer<>(buildKafkaProducerProps(parameterTool));    //发送通知 获取公式信息
-//        ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"), "1", "1");
-//        producer.send(record);
-//        producer.close();
-//        JedisClusterUtil.getJedisCluster().del(fendTopic);
+        Producer<String, String> producer = new KafkaProducer<>(buildKafkaProducerProps(parameterTool));    //发送通知 获取公式信息
+        ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"), "1", "1");
+        producer.send(record);
+        producer.close();
+        JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool()).del(fendTopic);
 
         //创建Flink 运行环境
         StreamExecutionEnvironment env = EnvUtils.prepare(parameterTool);
@@ -188,8 +195,12 @@ public class OnlineDataStream {
      * 校准数据 输出到时序数据库
      */
     private static void stCalibrationSink(SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator) {
-        tuple2SingleOutputStreamOperator.map((MapFunction<Tuple2<String, InputDataSingle>, InputDataSingle>) value -> value.f1)
-                .addSink(new InfluxDBSink(InfluxDBConfigUtil.getInfluxDBConfig(ParameterToolUtil.getParameterTool()))).name("InfluxDBSink 校准数据");
+        tuple2SingleOutputStreamOperator.timeWindowAll(Time.seconds(3)).process(new ProcessAllWindowFunction<Tuple2<String, InputDataSingle>, Iterable<Tuple2<String, InputDataSingle>>, TimeWindow>() {
+            @Override
+            public void process(Context context, Iterable<Tuple2<String, InputDataSingle>> iterable, Collector<Iterable<Tuple2<String, InputDataSingle>>> collector) throws Exception {
+                collector.collect(iterable);
+            }
+        }).addSink(new InfluxDBSink(InfluxDBConfigUtil.getInfluxDBConfig(ParameterToolUtil.getParameterTool()))).name("InfluxDBSink 校准数据");
     }
 
 
@@ -209,19 +220,19 @@ public class OnlineDataStream {
             @Override
             public void process(Tuple2<String, EsDosagePhase> tuple2, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
                 requestIndexer.add(Requests.indexRequest()
-                        .index("dosage_phase_temp")
+                        .index("dosage_phase")
                         .type("_doc")
                         .id(tuple2.f0)
                         .source(JSONObject.toJSONString(tuple2.f1), XContentType.JSON));
-                log.info("ES 写入数据dosage_phase_temp <<<{}", tuple2.f1);
+                log.info("ES 写入数据dosage_phase <<<{}", tuple2.f1);
             }
         }, ParameterToolUtil.getParameterTool());
 
         //统计数据输出到不同的数据库 ES
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc("dosage_half_temp"), ParameterToolUtil.getParameterTool());
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc("dosage_hour_temp"), ParameterToolUtil.getParameterTool());
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc("dosage_day_temp"), ParameterToolUtil.getParameterTool());
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc("dosage_month_temp"), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc("dosage_half"), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc("dosage_hour"), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc("dosage_day"), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc("dosage_month"), ParameterToolUtil.getParameterTool());
 
     }
 

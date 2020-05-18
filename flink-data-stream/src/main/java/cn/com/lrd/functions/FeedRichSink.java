@@ -86,7 +86,7 @@ public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
                 + value.getCode() + "_"
                 + value.getType() + "_"
                 + value.getAdd();
-        cluster.hset(PropertiesConstants.LARUNDA_INPUT_FEED_KEY, feedInputMapKey, mapValue);
+        cluster.hset(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), feedInputMapKey, mapValue);
 
         //查询input  feed 是否存在不存在就创建
         String inputQuerySql = "SELECT id FROM " + value.getDsSchema() + ".input WHERE inst_id='" + instrumentId + "' AND prop='" + value.getCode() + "' AND inst_addr=" + value.getAdd() + " AND inst_type=" + value.getType();
@@ -117,6 +117,16 @@ public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
                     + ")";
 
             statement.executeUpdate(feedInsertSql);
+        } else {
+            inputId = inputResultSet.getString("id");
+
+            String feedQuerySql = "SELECT id FROM " + value.getDsSchema() + ".feed WHERE input_id='" + inputId + "' AND feed_value_type='" + FeedValueType.ORI + "'";
+            ResultSet resultSet = statement.executeQuery(feedQuerySql);
+            if (resultSet.next())
+                feedId = resultSet.getString("id");
+
+            mapValue = inputId + "," + feedId;
+            cluster.hset(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), feedInputMapKey, mapValue);
         }
 
 

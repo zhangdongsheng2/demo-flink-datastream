@@ -1,9 +1,17 @@
 package cn.com.lrd.online;
 
+import cn.com.lrd.utils.ParameterToolUtil;
+import com.commerce.commons.config.InfluxDBConfig;
 import com.commerce.commons.utils.DateUtil;
+import com.commerce.commons.utils.InfluxDBConfigUtil;
+import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBFactory;
+import org.influxdb.dto.Point;
+import org.influxdb.dto.Query;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @description:
@@ -31,7 +39,7 @@ public class Test {
 //        System.out.println(JedisClusterUtil.getJedisCluster().hget("dev2-rest-b-config-to-calibration", "cdb053c53ea8414fa64c8cb43298b373"));
 
         //10000015_A10_1_2
-//        System.out.println( JedisClusterUtil.getJedisCluster().hget("larunda.input.feed.key","10000015_A10_1_2"));
+//        System.out.println( JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool()).hexists("larunda.input.feed.key","66666666_A105_1_2"));
 
 //        System.out.println(JedisClusterUtil.getJedisCluster().hgetAll(ExecutionEnvUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY)));
 
@@ -51,14 +59,20 @@ public class Test {
 
 // Create a database...
 // https://docs.influxdata.com/influxdb/v1.7/query_language/database_management/
-//        InfluxDBConfig influxDBConfig = InfluxDBConfigUtil.getInfluxDBConfig();
-//        InfluxDB influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
-//
-//        influxDBClient.query(new Query("CREATE DATABASE " + influxDBConfig.getDatabase()));
-//        influxDBClient.setDatabase(influxDBConfig.getDatabase());
+        InfluxDBConfig influxDBConfig = InfluxDBConfigUtil.getInfluxDBConfig(ParameterToolUtil.getParameterTool());
+        InfluxDB influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
+
+        influxDBClient.query(new Query("CREATE DATABASE " + influxDBConfig.getDatabase()));
+        influxDBClient.setDatabase(influxDBConfig.getDatabase());
 
 //        if (influxDBConfig.getBatchActions() > 0) {
 //            influxDBClient.enableBatch(influxDBConfig.getBatchActions(), influxDBConfig.getFlushDuration(), influxDBConfig.getFlushDurationTimeUnit());
+//        }
+//        SELECT * FROM "feed" WHERE "feedid" = '6666666600042'
+
+//        List<QueryResult.Result> results = influxDBClient.query(new Query("select * from feed where feedid=6666666600042")).getResults();
+//        for (QueryResult.Result result : results) {
+//            System.out.println(result.toString());
 //        }
 
 //        influxDBClient.write(Point.measurement("cpu")
@@ -67,6 +81,12 @@ public class Test {
 //                .addField("level description", "below 3 feet")
 //                .addField("water_level", 8.666d)
 //                .build());
+
+        influxDBClient.write(Point.measurement("feed")
+                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+                .tag("feedid", "ss66666")
+                .addField("value", 33.0)
+                .build());
 
 
         LocalDateTime yyyyMMddHHmmss = DateUtil.parseLocalDateTime("20200512143700", "yyyyMMddHHmmss");

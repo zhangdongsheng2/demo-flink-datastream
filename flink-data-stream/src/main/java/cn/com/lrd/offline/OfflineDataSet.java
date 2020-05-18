@@ -1,23 +1,17 @@
 package cn.com.lrd.offline;
 
 import cn.com.lrd.functions.CalibrationFlatMap;
-import cn.com.lrd.functions.PreprocessorFilterFlatMap;
-import cn.com.lrd.functions.PreprocessorOutFlatMap;
-import cn.com.lrd.functions.PreprocessorTimeFlatMap;
+import cn.com.lrd.functions.hbase.CustomTableInputFormat;
 import cn.com.lrd.utils.ParameterToolUtil;
 import com.alibaba.fastjson.JSONObject;
-import com.commerce.commons.config.InfluxDBConfig;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.model.*;
 import com.commerce.commons.utils.DateUtil;
-import com.commerce.commons.utils.InfluxDBConfigUtil;
 import com.commerce.commons.utils.MyEsUtil;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.addons.hbase.TableInputFormat;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.functions.MapPartitionFunction;
-import org.apache.flink.api.common.functions.RichMapPartitionFunction;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.FlatMapOperator;
@@ -28,29 +22,19 @@ import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
-import org.apache.flink.util.Preconditions;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueExcludeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.influxdb.InfluxDB;
-import org.influxdb.InfluxDBFactory;
-import org.influxdb.dto.BatchPoints;
-import org.influxdb.dto.Point;
-import org.influxdb.dto.Query;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 /**
  * @description: 离线数据处理
@@ -88,11 +72,11 @@ public class OfflineDataSet {
 
         AlertVo alertVo = new AlertVo();
         alertVo.setAddr("1");
-        alertVo.setStime("2020-05-01 13:12:00");
+        alertVo.setStime("2020-05-11 13:12:00");
 //        alertVo.setSn(new StringBuilder("01000000").reverse().toString());
         alertVo.setSn("51101111");
         alertVo.setType("1");
-        alertVo.setEtime("2020-05-11 19:12:00");
+        alertVo.setEtime("2020-05-11 17:12:00");
 
         run(alertVo, parameterTool);
     }
@@ -103,8 +87,29 @@ public class OfflineDataSet {
 
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(parameterTool.getInt(PropertiesConstants.STREAM_PARALLELISM, 1));
+
+        ;
+
+
         FlatMapOperator<Tuple2<String, InputDataSingle>, Tuple2<String, InputDataSingle>> tuple2Tuple2FlatMapOperator =
-                env.createInput(new TableInputFormat<Tuple2<String, InputData>>() {
+                env.createInput(new CustomTableInputFormat<Tuple2<String, InputData>>() {
+
+                    @SneakyThrows
+                    @Override
+                    public void configure(Configuration parameters) {
+                        org.apache.hadoop.conf.Configuration configuration = HBaseConfiguration.create();
+                        configuration.set(PropertiesConstants.HBASE_ZOOKEEPER_QUORUM, ParameterToolUtil.getParameterTool().get(PropertiesConstants.HBASE_ZOOKEEPER_QUORUM));
+                        configuration.set(PropertiesConstants.HBASE_ZOOKEEPER_PROPERTY_CLIENTPORT, ParameterToolUtil.getParameterTool().get(PropertiesConstants.HBASE_ZOOKEEPER_PROPERTY_CLIENTPORT));
+                        configuration.set(PropertiesConstants.HBASE_RPC_TIMEOUT, ParameterToolUtil.getParameterTool().get(PropertiesConstants.HBASE_RPC_TIMEOUT));
+                        configuration.set(PropertiesConstants.HBASE_CLIENT_OPERATION_TIMEOUT, ParameterToolUtil.getParameterTool().get(PropertiesConstants.HBASE_CLIENT_OPERATION_TIMEOUT));
+                        configuration.set(PropertiesConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD, ParameterToolUtil.getParameterTool().get(PropertiesConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD));
+
+                        Connection connect = ConnectionFactory.createConnection(configuration);
+
+
+                        table = (HTable) connect.getTable(TableName.valueOf(HBASE_TABLE_NAME));
+                        scan = getScanner();
+                    }
 
                     @Override
                     protected Scan getScanner() {
@@ -145,7 +150,6 @@ public class OfflineDataSet {
                         int delay = Bytes.toInt(result.getValue(INFO, OfflineDataSet.delay));
                         return new Tuple2<>(key, new InputData(args.getSn(), topic, timeStr, args.getType(), args.getAddr(), codeValueVos, 1, null, delay));
                     }
-
                 })
 //                        .setParallelism(1)
                         .flatMap(new FlatMapFunction<Tuple2<String, InputData>, Tuple2<String, InputDataSingle>>() {
@@ -166,95 +170,120 @@ public class OfflineDataSet {
                         //校准数据
                         .flatMap(new CalibrationFlatMap(fendTopic));
 
+        tuple2Tuple2FlatMapOperator.output(new OutputFormat<Tuple2<String, InputDataSingle>>() {
+            @Override
+            public void configure(Configuration parameters) {
+
+            }
+
+            @Override
+            public void open(int taskNumber, int numTasks) throws IOException {
+
+            }
+
+            @Override
+            public void writeRecord(Tuple2<String, InputDataSingle> record) throws IOException {
+                System.out.println(record.f1.getTime() + "========================");
+            }
+
+            @Override
+            public void close() throws IOException {
+
+            }
+        });
+
+        env.execute();
+//        tuple2Tuple2FlatMapOperator.print();
+
 
         //保存校准数据
-        tuple2Tuple2FlatMapOperator.mapPartition(new RichMapPartitionFunction<Tuple2<String, InputDataSingle>, Tuple2<String, InputDataSingle>>() {
-            private transient InfluxDBConfig influxDBConfig;
-            private transient InfluxDB influxDBClient;
-
-            @Override
-            public void open(Configuration parameters) throws Exception {
-                super.open(parameters);
-                influxDBConfig = Preconditions.checkNotNull(InfluxDBConfigUtil.getInfluxDBConfig(ParameterToolUtil.getParameterTool()), "InfluxDB client config should not be null");
-                influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
-                if (influxDBConfig.isCreateDatabase())
-                    influxDBClient.query(new Query("CREATE DATABASE " + influxDBConfig.getDatabase()));
-                influxDBClient.setDatabase(influxDBConfig.getDatabase());
-
-                if (influxDBConfig.isEnableGzip()) {
-                    influxDBClient.enableGzip();
-                }
-            }
-
-            @Override
-            public void mapPartition(Iterable<Tuple2<String, InputDataSingle>> values, Collector<Tuple2<String, InputDataSingle>> out) throws Exception {
-                HashSet<Point> points = new HashSet<>();
-
-
-                values.forEach(new Consumer<Tuple2<String, InputDataSingle>>() {
-                    @Override
-                    public void accept(Tuple2<String, InputDataSingle> value) {
-                        InputDataSingle input = value.f1;
-                        long time = DateUtil.parseStrDateTime(input.getTime());
-                        Point.Builder builder = Point.measurement(influxDBConfig.getMeasurement())
-                                .tag("feedid", input.getFeedId())
-                                .addField("value", input.getValue())
-                                .time(time, TimeUnit.MILLISECONDS);
-                        Point point = builder.build();
-                        points.add(point);
-                        out.collect(value);
-                    }
-                });
-
-                log.info("开始输出数据到influxdb<<< {}", points.size());
-                influxDBClient.writeWithRetry(BatchPoints.builder().points(points).build());
-                log.info("输出数据到influxdb<<< {}", points.size());
-            }
-
-            @Override
-            public void close() {
-                if (influxDBClient.isBatchEnabled()) {
-                    influxDBClient.disableBatch();
-                }
-                influxDBClient.close();
-            }
-        })
-                .flatMap(new PreprocessorFilterFlatMap())
-                .flatMap(new PreprocessorTimeFlatMap())
-                .flatMap(new PreprocessorOutFlatMap())
-                .mapPartition(new MapPartitionFunction<Tuple4<String, String, EsDosagePhase, EsDosage>, Object>() {
-                    @Override
-                    public void mapPartition(Iterable<Tuple4<String, String, EsDosagePhase, EsDosage>> values, Collector<Object> out) throws Exception {
-                        HashMap<String, List<Tuple2<String, Object>>> stringListHashMap = new HashMap<>();
-
-                        values.forEach(new Consumer<Tuple4<String, String, EsDosagePhase, EsDosage>>() {
-                            @Override
-                            public void accept(Tuple4<String, String, EsDosagePhase, EsDosage> tuple4) {
-                                List<Tuple2<String, Object>> tuple2s = stringListHashMap.computeIfAbsent(tuple4.f0, k -> new ArrayList<>());
-
-                                if (tuple4.f0.equals(PreprocessorOutFlatMap.phaseOutputTag)) {
-                                    tuple2s.add(new Tuple2<>(tuple4.f1, tuple4.f2));
-                                } else {
-                                    tuple2s.add(new Tuple2<>(tuple4.f1, tuple4.f3));
-                                }
-
-                            }
-                        });
-
-                        stringListHashMap.forEach(new BiConsumer<String, List<Tuple2<String, Object>>>() {
-                            @Override
-                            public void accept(String s, List<Tuple2<String, Object>> tuple2s) {
-                                try {
-                                    MyEsUtil.executeIndexBulk(s, tuple2s);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        });
-
-
-                    }
-                }).print();
+//        tuple2Tuple2FlatMapOperator.mapPartition(new RichMapPartitionFunction<Tuple2<String, InputDataSingle>, Tuple2<String, InputDataSingle>>() {
+//            private transient InfluxDBConfig influxDBConfig;
+//            private transient InfluxDB influxDBClient;
+//
+//            @Override
+//            public void open(Configuration parameters) throws Exception {
+//                super.open(parameters);
+//                influxDBConfig = Preconditions.checkNotNull(InfluxDBConfigUtil.getInfluxDBConfig(ParameterToolUtil.getParameterTool()), "InfluxDB client config should not be null");
+//                influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
+//                if (influxDBConfig.isCreateDatabase())
+//                    influxDBClient.query(new Query("CREATE DATABASE " + influxDBConfig.getDatabase()));
+//                influxDBClient.setDatabase(influxDBConfig.getDatabase());
+//
+//                if (influxDBConfig.isEnableGzip()) {
+//                    influxDBClient.enableGzip();
+//                }
+//            }
+//
+//            @Override
+//            public void mapPartition(Iterable<Tuple2<String, InputDataSingle>> values, Collector<Tuple2<String, InputDataSingle>> out) throws Exception {
+//                HashSet<Point> points = new HashSet<>();
+//
+//
+//                values.forEach(new Consumer<Tuple2<String, InputDataSingle>>() {
+//                    @Override
+//                    public void accept(Tuple2<String, InputDataSingle> value) {
+//                        InputDataSingle input = value.f1;
+//                        long time = DateUtil.parseStrDateTime(input.getTime());
+//                        Point.Builder builder = Point.measurement(influxDBConfig.getMeasurement())
+//                                .tag("feedid", input.getFeedId())
+//                                .addField("value", input.getValue())
+//                                .time(time, TimeUnit.MILLISECONDS);
+//                        Point point = builder.build();
+//                        points.add(point);
+//                        out.collect(value);
+//                    }
+//                });
+//
+//                log.info("开始输出数据到influxdb<<< {}", points.size());
+//                influxDBClient.writeWithRetry(BatchPoints.builder().points(points).build());
+//                log.info("输出数据到influxdb<<< {}", points.size());
+//            }
+//
+//            @Override
+//            public void close() {
+//                if (influxDBClient.isBatchEnabled()) {
+//                    influxDBClient.disableBatch();
+//                }
+//                influxDBClient.close();
+//            }
+//        })
+//                .flatMap(new PreprocessorFilterFlatMap())
+//                .flatMap(new PreprocessorTimeFlatMap())
+//                .flatMap(new PreprocessorOutFlatMap())
+//                .mapPartition(new MapPartitionFunction<Tuple4<String, String, EsDosagePhase, EsDosage>, Object>() {
+//                    @Override
+//                    public void mapPartition(Iterable<Tuple4<String, String, EsDosagePhase, EsDosage>> values, Collector<Object> out) throws Exception {
+//                        HashMap<String, List<Tuple2<String, Object>>> stringListHashMap = new HashMap<>();
+//
+//                        values.forEach(new Consumer<Tuple4<String, String, EsDosagePhase, EsDosage>>() {
+//                            @Override
+//                            public void accept(Tuple4<String, String, EsDosagePhase, EsDosage> tuple4) {
+//                                List<Tuple2<String, Object>> tuple2s = stringListHashMap.computeIfAbsent(tuple4.f0, k -> new ArrayList<>());
+//
+//                                if (tuple4.f0.equals(PreprocessorOutFlatMap.phaseOutputTag)) {
+//                                    tuple2s.add(new Tuple2<>(tuple4.f1, tuple4.f2));
+//                                } else {
+//                                    tuple2s.add(new Tuple2<>(tuple4.f1, tuple4.f3));
+//                                }
+//
+//                            }
+//                        });
+//
+//                        stringListHashMap.forEach(new BiConsumer<String, List<Tuple2<String, Object>>>() {
+//                            @Override
+//                            public void accept(String s, List<Tuple2<String, Object>> tuple2s) {
+//                                try {
+//                                    MyEsUtil.executeIndexBulk(s, tuple2s);
+//                                } catch (Exception e) {
+//                                    e.printStackTrace();
+//                                }
+//                            }
+//                        });
+//
+//
+//                    }
+//                }).print();
 
 
 //                .map((MapFunction<Tuple2<String, InputDataSingle>, InputDataSingle>) value -> value.f1)

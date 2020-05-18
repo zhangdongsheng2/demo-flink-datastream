@@ -7,6 +7,7 @@ import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.model.InputIdValueVo;
 import com.commerce.commons.utils.Calculator;
 import com.commerce.commons.utils.JedisClusterUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +55,14 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
             log.debug("数据没有inputId_feedId<<<{}", value.f1);
             return;
         }
-        valueIds = new ObjectMapper().readValue(valueIds, String.class);
+
+        try {
+            valueIds = new ObjectMapper().readValue(valueIds, String.class);
+        } catch (JsonProcessingException e) {
+            log.debug("数据不是 json <<<{}", valueIds);
+        }
+
+
         List<String> valueList = Arrays.asList(valueIds.split(","));
         inputDataSingle.setInputId(valueList.get(0));
         inputDataSingle.setFeedId(valueList.get(1));
