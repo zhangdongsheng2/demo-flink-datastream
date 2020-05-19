@@ -13,9 +13,6 @@ import java.util.Optional;
 
 /**
  * Desc: es sink Request Failure Handler
- * Created by zhisheng on 2019/10/21 下午3:07
- * blog：http://www.54tianzhisheng.cn/
- * 微信公众号：zhisheng
  */
 @Slf4j
 public class RetryRequestFailureHandler implements ActionRequestFailureHandler {

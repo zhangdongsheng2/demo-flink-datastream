@@ -13,7 +13,7 @@ import java.util.List;
 
 public class ESSinkUtil {
     /**
-     * es sink
+     * es sink 创建, 并设置失败Handler, 和多少条刷新数据到ES
      *
      * @param data 数据
      */

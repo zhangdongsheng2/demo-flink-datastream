@@ -73,11 +73,12 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
         InputDataSingle inputDataSingle = value.f5;
         long longTime = DateUtil.parseStrDateTime(inputDataSingle.getTime());
         //这里过滤一下乱序数据, 一个feedId 10分钟的基数出现乱序数据就不处理
-        if (lastTime.value() != null && longTime < lastTime.value()) {
-            log.info("乱序数据不处理>>>{}", inputDataSingle);
-            return;
-        }
-        lastTime.update(longTime);
+        //离线或修正数据是乱序数据, 暂时注释掉这一段,  后面针对离线数据可以做新开job监听离线数据 topic 避免影响实时job
+//        if (lastTime.value() != null && longTime < lastTime.value()) {
+//            log.info("乱序数据不处理>>>{}", inputDataSingle);
+//            return;
+//        }
+//        lastTime.update(longTime);
 
         EsDosagePhase esDosagePhase = new EsDosagePhase(inputDataSingle.getFeedId(), inputDataSingle.getCode(), inputDataSingle.getValue(), inputDataSingle.getTime(), new Date(), new Date());
         out.collect(new Tuple2<>(inputDataSingle.getFeedId() + "_" + inputDataSingle.getTime(), esDosagePhase));

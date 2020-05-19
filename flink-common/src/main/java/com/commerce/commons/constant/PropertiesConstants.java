@@ -28,13 +28,17 @@ public interface PropertiesConstants {
     //es config
     String ELASTICSEARCH_BULK_FLUSH_MAX_ACTIONS = "elasticsearch.bulk.flush.max.actions";
     String ELASTICSEARCH_HOSTS = "elasticsearch.hosts";
+    String INDEX_DOSAGE_PHASE = "index.dosage_phase";
+    String INDEX_DOSAGE_HALF = "index.dosage_half";
+    String INDEX_DOSAGE_HOUR = "index.dosage_hour";
+    String INDEX_DOSAGE_DAY = "index.dosage_day";
+    String INDEX_DOSAGE_MONTH = "index.dosage_month";
 
     //mysql
-    String MYSQL_DATABASE = "mysql.database";
-    String MYSQL_HOST = "mysql.host";
-    String MYSQL_PASSWORD = "mysql.password";
-    String MYSQL_PORT = "mysql.port";
-    String MYSQL_USERNAME = "mysql.username";
+    String JDBC_URL = "jdbc.url";
+    String JDBC_DRIVER = "jdbc.driver";
+    String JDBC_USERNAME = "jdbc.username";
+    String JDBC_PASSWORD = "jdbc.password";
 
     //redis
     String LARUNDA_INPUT_FEED_KEY = "larunda.input.feed.key";

@@ -5,6 +5,7 @@ import cn.com.lrd.utils.EnvUtils;
 import cn.com.lrd.utils.ParameterToolUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.model.*;
 import com.commerce.commons.schemas.InputDataSchema;
 import com.commerce.commons.utils.ESSinkUtil;
@@ -62,7 +63,8 @@ public class OnlineDataStream {
         //启动前准备
         final ParameterTool parameterTool = ParameterToolUtil.createParameterTool(args);
         String fendTopic = parameterTool.get("changed.topic");
-        Producer<String, String> producer = new KafkaProducer<>(buildKafkaProducerProps(parameterTool));    //发送通知 获取公式信息
+        //发送通知 获取公式信息
+        Producer<String, String> producer = new KafkaProducer<>(buildKafkaProducerProps(parameterTool));
         ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"), "1", "1");
         producer.send(record);
         producer.close();
@@ -220,7 +222,7 @@ public class OnlineDataStream {
             @Override
             public void process(Tuple2<String, EsDosagePhase> tuple2, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
                 requestIndexer.add(Requests.indexRequest()
-                        .index("dosage_phase")
+                        .index(ParameterToolUtil.getParameterTool().get(PropertiesConstants.INDEX_DOSAGE_PHASE))
                         .type("_doc")
                         .id(tuple2.f0)
                         .source(JSONObject.toJSONString(tuple2.f1), XContentType.JSON));
@@ -229,10 +231,10 @@ public class OnlineDataStream {
         }, ParameterToolUtil.getParameterTool());
 
         //统计数据输出到不同的数据库 ES
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc("dosage_half"), ParameterToolUtil.getParameterTool());
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc("dosage_hour"), ParameterToolUtil.getParameterTool());
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc("dosage_day"), ParameterToolUtil.getParameterTool());
-        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc("dosage_month"), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.halfTimeOutputTag), getESSinkFunc(ParameterToolUtil.getParameterTool().get(PropertiesConstants.INDEX_DOSAGE_HALF)), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.hourTimeOutputTag), getESSinkFunc(ParameterToolUtil.getParameterTool().get(PropertiesConstants.INDEX_DOSAGE_HOUR)), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.dayTimeOutputTag), getESSinkFunc(ParameterToolUtil.getParameterTool().get(PropertiesConstants.INDEX_DOSAGE_DAY)), ParameterToolUtil.getParameterTool());
+        ESSinkUtil.addSink(3, process.getSideOutput(KeyedStatePreprocessor.monthTimeOutputTag), getESSinkFunc(ParameterToolUtil.getParameterTool().get(PropertiesConstants.INDEX_DOSAGE_MONTH)), ParameterToolUtil.getParameterTool());
 
     }
 

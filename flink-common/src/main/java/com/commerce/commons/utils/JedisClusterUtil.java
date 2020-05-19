@@ -23,16 +23,6 @@ public class JedisClusterUtil {
     private static Set<HostAndPort> jedisClusterNodes = new HashSet<HostAndPort>();
     private static JedisCluster jedisCluster = null;
 
-    /**
-     * 初始化jedisCluster对象
-     */
-//    static {
-//        try {
-//            jedisCluster = reloadJedisCluster();
-//        } catch (Exception e) {
-//            logger.error(e.getMessage(), e);
-//        }
-//    }
 
     /**
      * 集群模式
@@ -54,6 +44,7 @@ public class JedisClusterUtil {
     /**
      * 集群模式
      * 获取JedisCluster方法
+     * 初始化jedisCluster对象
      *
      * @return
      * @throws Exception

@@ -1,5 +1,6 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.utils.CreateMySqlPool;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,7 @@ public class QuerySchemasFlatMap extends RichFlatMapFunction<InputDataSingle, In
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        con = CreateMySqlPool.getConnection();
+        con = CreateMySqlPool.getConnection(ParameterToolUtil.getParameterTool());
         String sql = "SELECT ds_schema,dev_seri_no,prod_key FROM " + "iothub_dev" + ".key_schema where dev_seri_no=?;";
         ps = con.prepareStatement(sql);
         dsSchemas = new HashMap<>();
@@ -51,15 +52,4 @@ public class QuerySchemasFlatMap extends RichFlatMapFunction<InputDataSingle, In
             log.trace("keyToSchema error!");
         }
     }
-
-//    @Override
-//    public void close() throws Exception {
-//        //关闭连接和释放资源
-//        if (con != null) {
-//            con.close();
-//        }
-//        if (ps != null) {
-//            ps.close();
-//        }
-//    }
 }

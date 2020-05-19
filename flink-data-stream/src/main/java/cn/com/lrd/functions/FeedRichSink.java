@@ -32,7 +32,7 @@ public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        con = CreateMySqlPool.getConnection();
+        con = CreateMySqlPool.getConnection(ParameterToolUtil.getParameterTool());
         statement = con.createStatement();
         cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
     }
@@ -43,11 +43,9 @@ public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
         String iotDeviceSql = " SELECT id,dev_seri_no FROM " + value.getDsSchema() + ".iot_device WHERE dev_seri_no=" + value.getSn() + " AND is_del=0";
         ResultSet iotDeviceResultSet = statement.executeQuery(iotDeviceSql);
         String iotDeviceId = "";
-        String iotDevSeriNo = "";
         if (iotDeviceResultSet.next()) {
             //存在
             iotDeviceId = iotDeviceResultSet.getString("id");
-            iotDevSeriNo = iotDeviceResultSet.getString("dev_seri_no");
         }
         if (StringUtils.isEmpty(iotDeviceId)) return;
 
@@ -57,9 +55,10 @@ public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
         ResultSet topicResultSet = statement.executeQuery(topicSql);
         String topicId = "";
         if (topicResultSet.next()) {
-            topicId = topicResultSet.getString("id");
             //存在
+            topicId = topicResultSet.getString("id");
         } else {
+            //不存在直接返回
             return;
         }
 
