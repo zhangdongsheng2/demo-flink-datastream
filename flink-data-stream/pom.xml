@@ -17,20 +17,20 @@
             <groupId>org.example</groupId>
             <artifactId>flink-common</artifactId>
             <version>${project.version}</version>
-<!--            <scope>provided</scope>-->
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
             <version>2.7.5</version>
-            <!--            <scope>provided</scope>-->
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs</artifactId>
             <version>2.7.5</version>
-            <!--            <scope>provided</scope>-->
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
