@@ -82,27 +82,14 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
         EsDosagePhase esDosagePhase = new EsDosagePhase(inputDataSingle.getFeedId(), inputDataSingle.getCode(), inputDataSingle.getValue(), inputDataSingle.getTime(), new Date(), new Date());
         out.collect(new Tuple2<>(inputDataSingle.getFeedId() + "_" + inputDataSingle.getTime(), esDosagePhase));
 
-        //当前Feed 上一笔数据
-//        BigDecimal lastFeedValue = null;
-//        if (lastState.value() != null)
-//            lastFeedValue = BigDecimal.valueOf(lastState.value());
-        //当前Feed 现在的数据
-//        BigDecimal currentFeedValue = BigDecimal.valueOf(inputDataSingle.getValue());
-//        lastState.update(currentFeedValue.doubleValue());
-        //现在的数据与上一笔数据的差值
-//        double subtract = 0.0;
-//        if (lastFeedValue != null)
-//            subtract = currentFeedValue.subtract(lastFeedValue).doubleValue();
 
         //时间存入半小时
+        //=================下面用redis 存储阶段开始时间结束时间=============================
         Tuple2<LocalDateTime, LocalDateTime> halfTime = value.f1;
-//        outPutData(timeState, halfTime, ctx, esDosagePhase, subtract, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
         outPutData(cluster, halfTime, ctx, esDosagePhase, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
 
         Tuple2<LocalDateTime, LocalDateTime> hourTime = value.f2;
-//        outPutData(timeState, hourTime, ctx, esDosagePhase, subtract, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
         outPutData(cluster, hourTime, ctx, esDosagePhase, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
-        //=================下面用redis 存储阶段开始时间结束时间=============================
 
         Tuple2<LocalDateTime, LocalDateTime> dayTime = value.f3;
         outPutData(cluster, dayTime, ctx, esDosagePhase, EStep.ONE_DAY.getName(), dayTimeOutputTag);
@@ -117,22 +104,43 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
         String key = esDosagePhase.getFeed_id() + DateUtil.toEpochSecond(tupleTime.f0) + DateUtil.toEpochSecond(tupleTime.f1);
         String startTimeValue = cluster.hget(key, PropertiesConstants.START_TIME);
         double value = 0.0;
+        String startValue = String.valueOf(esDosagePhase.getData_value());
+        String endValue = String.valueOf(esDosagePhase.getData_value());
         if (StringUtils.isEmpty(startTimeValue)) {
             cluster.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
         } else {
-            String startValue = startTimeValue.split("#")[1];
-            boolean equals = localDateTime.equals(tupleTime.f0);
-            if (equals) {
-                //离线处理, 如果数据时间等于开始时间 就重新设置开始时间数据.
+            String[] split = startTimeValue.split("#");
+            LocalDateTime startTime = DateUtil.parseLocalDateTime(split[0]);
+            //离线处理, 如果数据时间等于开始时间 就重新设置开始时间数据.
+            boolean isOffline = localDateTime.equals(startTime) || localDateTime.isBefore(startTime);
+            if (isOffline) {
                 cluster.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
-                startValue = "0.0";
+            } else {
+                startValue = split[1];
             }
-
-            BigDecimal subtract = BigDecimal.valueOf(esDosagePhase.getData_value()).subtract(new BigDecimal(startValue));
-            value = subtract.doubleValue();
         }
 
-        cluster.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+        String endTimeValue = cluster.hget(key, PropertiesConstants.END_TIME);
+        if (StringUtils.isNotEmpty(endTimeValue)) {
+            String[] split = endTimeValue.split("#");
+            String time = split[0];
+            LocalDateTime endTime = DateUtil.parseLocalDateTime(time);
+            //离线数据过来 如果是修改的当前结束时间的数值, 就要更新结束时间的数值, value结果不变,  如果数据不是修改的结束时间数值就不用关系, value 用查出的结束值减去开始值
+            boolean isOffline = localDateTime.equals(endTime) || localDateTime.isAfter(endTime);
+            if (isOffline) {
+                cluster.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+            } else {
+                endValue = split[1];
+            }
+        } else {
+            cluster.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+        }
+
+        //计算  开始时间的值 - 结束时间的值
+        BigDecimal subtract = new BigDecimal(endValue).subtract(new BigDecimal(startValue));
+        value = subtract.doubleValue();
+
+
         cluster.expire(key, 35 * 24 * 60 * 60);//设置35天过期
 
         EsDosage esDosage = new EsDosage(esDosagePhase.getFeed_id(), value,

@@ -43,7 +43,7 @@ public class KafkaTest {
 //        ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"), "1", "1");
 //        producer.send(record);
 //        producer.close();
-//        JedisClusterUtil.getJedisCluster().del(fendTopic);
+//        JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool()).del(fendTopic);
 
         //创建Flink 运行环境
         StreamExecutionEnvironment env = EnvUtils.prepare(parameterTool);

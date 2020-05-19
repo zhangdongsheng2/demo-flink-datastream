@@ -45,7 +45,13 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
     @Override
     public void flatMap(Tuple2<String, InputDataSingle> value, Collector<Tuple2<String, InputDataSingle>> out) throws Exception {
 //        System.out.println(value.f1.getTime() + "=========================");
-        Boolean hexists = jedisCluster.hexists(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
+        Boolean hexists = false;
+        try {
+            hexists = jedisCluster.hexists(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
+        } catch (Exception e) {
+            jedisCluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
+            log.info("jedisCluster报错重新获取<<<{}", e.getMessage());
+        }
         if (!hexists || StringUtils.isEmpty(value.f1.getCode())) return;
 
         InputDataSingle inputDataSingle = value.f1;

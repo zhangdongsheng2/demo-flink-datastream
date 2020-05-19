@@ -195,7 +195,7 @@ public class OnlineDataStream {
      * 校准数据 输出到时序数据库
      */
     private static void stCalibrationSink(SingleOutputStreamOperator<Tuple2<String, InputDataSingle>> tuple2SingleOutputStreamOperator) {
-        tuple2SingleOutputStreamOperator.timeWindowAll(Time.seconds(3)).process(new ProcessAllWindowFunction<Tuple2<String, InputDataSingle>, Iterable<Tuple2<String, InputDataSingle>>, TimeWindow>() {
+        tuple2SingleOutputStreamOperator.timeWindowAll(Time.seconds(6)).process(new ProcessAllWindowFunction<Tuple2<String, InputDataSingle>, Iterable<Tuple2<String, InputDataSingle>>, TimeWindow>() {
             @Override
             public void process(Context context, Iterable<Tuple2<String, InputDataSingle>> iterable, Collector<Iterable<Tuple2<String, InputDataSingle>>> collector) throws Exception {
                 collector.collect(iterable);

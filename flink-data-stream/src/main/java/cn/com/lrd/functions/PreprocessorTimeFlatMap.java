@@ -39,7 +39,7 @@ public class PreprocessorTimeFlatMap implements FlatMapFunction<InputDataSingle,
         if (minute == 0 || minute == 30) {
             //01:00 加一条 00:30-01:00     01:30 加一条 01:00 - 01:30
             LocalDateTime halfEndTime2 = halfStartTime;
-            LocalDateTime halfStartTime2 = halfEndTime.minusMinutes(30);
+            LocalDateTime halfStartTime2 = halfEndTime2.minusMinutes(30);
 
             LocalDateTime hourEndTime2 = hourEndTime;
             LocalDateTime hourStartTime2 = hourStartTime;

@@ -15,7 +15,8 @@ import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 
-import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -46,7 +47,7 @@ public class InfluxDBSink extends RichSinkFunction<Iterable<Tuple2<String, Input
 
     @Override
     public void invoke(Iterable<Tuple2<String, InputDataSingle>> inputs, SinkFunction.Context context) throws Exception {
-        ArrayList<Point> points = new ArrayList<>();
+        Set<Point> points = new HashSet<>();
         inputs.forEach(new Consumer<Tuple2<String, InputDataSingle>>() {
             @Override
             public void accept(Tuple2<String, InputDataSingle> tuple2) {
@@ -62,13 +63,30 @@ public class InfluxDBSink extends RichSinkFunction<Iterable<Tuple2<String, Input
             }
         });
 
-        InfluxDB influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
-        influxDBClient.setDatabase(influxDBConfig.getDatabase());
-        influxDBClient.setLogLevel(InfluxDB.LogLevel.BASIC);
-        influxDBClient.writeWithRetry(BatchPoints.builder().points(points).build());
-        influxDBClient.close();
+        try {
+            InfluxDB influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
+            BatchPoints build = BatchPoints.database(influxDBConfig.getDatabase()).points(points).build();
+            influxDBClient.setLogLevel(InfluxDB.LogLevel.BASIC);
+            influxDBClient.writeWithRetry(build);
+            influxDBClient.close();
+            log.info("InfluxDB 写入数据  条数<<<{}", points.size());
+        } catch (Exception e) {
+            log.info("数据写入失败{}  条数<<<{}", e.getMessage(), points.size());
 
-        log.info("InfluxDB 写入数据  条数<<<{}", points.size());
+            try {
+                InfluxDB influxDBClient = InfluxDBFactory.connect(influxDBConfig.getUrl(), influxDBConfig.getUsername(), influxDBConfig.getPassword());
+                BatchPoints build = BatchPoints.database(influxDBConfig.getDatabase()).points(points).build();
+                influxDBClient.setLogLevel(InfluxDB.LogLevel.BASIC);
+                influxDBClient.writeWithRetry(build);
+                influxDBClient.close();
+                log.info("InfluxDB ===重新===写入数据  条数<<<{}", points.size());
+            } catch (Exception ex) {
+                log.info("InfluxDB ===重新===写入数据失败{}  条数<<<{}", e.getMessage(), points.size());
+            }
+
+        }
+
+
     }
 }
 

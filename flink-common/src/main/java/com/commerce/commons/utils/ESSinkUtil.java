@@ -21,7 +21,7 @@ public class ESSinkUtil {
         ElasticsearchSink.Builder<T> esSinkBuilder =
                 new ElasticsearchSink.Builder<>(ESSinkUtil.getEsAddresses(parameterTool.get(PropertiesConstants.ELASTICSEARCH_HOSTS)), func);
         esSinkBuilder.setBulkFlushMaxActions(2);
-//        esSinkBuilder.setFailureHandler(new RetryRequestFailureHandler());
+        esSinkBuilder.setFailureHandler(new RetryRequestFailureHandler());
         //xpack security
         data.addSink(esSinkBuilder.build()).name("ESSink").setParallelism(parallelism);
     }
