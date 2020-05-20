@@ -5,6 +5,9 @@ package com.commerce.commons.constant;
  * 常量
  */
 public interface PropertiesConstants {
+    //通过参数设置使用哪个配置文件
+    String PROFILES_ACTIVE = "profiles.active";
+
     String KAFKA_BROKERS = "kafka.brokers";
     String DEFAULT_KAFKA_BROKERS = "localhost:9092";
     String KAFKA_ZOOKEEPER_CONNECT = "kafka.zookeeper.connect";
@@ -20,7 +23,7 @@ public interface PropertiesConstants {
     String STREAM_CHECKPOINT_DIR = "stream.checkpoint.dir";
     String STREAM_CHECKPOINT_TYPE = "stream.checkpoint.type";
     String STREAM_CHECKPOINT_INTERVAL = "stream.checkpoint.interval";
-    String PROPERTIES_FILE_NAME = "/application.properties";
+    String PROPERTIES_FILE_NAME = "application_local_dev.properties";
     String CHECKPOINT_MEMORY = "memory";
     String CHECKPOINT_FS = "fs";
     String CHECKPOINT_ROCKETSDB = "rocksdb";

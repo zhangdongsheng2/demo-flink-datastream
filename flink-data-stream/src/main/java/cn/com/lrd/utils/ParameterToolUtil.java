@@ -19,16 +19,17 @@ public class ParameterToolUtil {
     }
 
     public static ParameterTool createParameterTool(final String[] args) throws Exception {
+        ParameterTool parameterTool = ParameterTool.fromArgs(args);
         return ParameterTool
-                .fromPropertiesFile(ParameterToolUtil.class.getResourceAsStream(PropertiesConstants.PROPERTIES_FILE_NAME))
-                .mergeWith(ParameterTool.fromArgs(args))
+                .fromPropertiesFile(ParameterToolUtil.class.getResourceAsStream("/" + parameterTool.get(PropertiesConstants.PROFILES_ACTIVE, PropertiesConstants.PROPERTIES_FILE_NAME)))
+                .mergeWith(parameterTool)
                 .mergeWith(ParameterTool.fromSystemProperties());
     }
 
     private static ParameterTool createParameterTool() {
         try {
             return ParameterTool
-                    .fromPropertiesFile(ParameterToolUtil.class.getResourceAsStream(PropertiesConstants.PROPERTIES_FILE_NAME))
+                    .fromPropertiesFile(ParameterToolUtil.class.getResourceAsStream("/" + PropertiesConstants.PROPERTIES_FILE_NAME))
                     .mergeWith(ParameterTool.fromSystemProperties());
         } catch (IOException e) {
             e.printStackTrace();

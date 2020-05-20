@@ -58,7 +58,7 @@ import static com.commerce.commons.utils.KafkaConfigUtil.buildKafkaProps;
 public class OnlineDataStream {
 
 
-    //--input.topic topic-pub555555 传参示例
+    //--profiles.active application_saas.properties   传参设置配置文件示例 .
     public static void main(String[] args) throws Exception {
         //启动前准备
         final ParameterTool parameterTool = ParameterToolUtil.createParameterTool(args);
