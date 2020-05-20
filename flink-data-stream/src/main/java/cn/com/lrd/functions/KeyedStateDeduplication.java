@@ -4,8 +4,10 @@ import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.utils.JedisClusterUtil;
+import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple;
@@ -34,9 +36,20 @@ public class KeyedStateDeduplication extends KeyedProcessFunction<Tuple, Tuple2<
     public void open(Configuration parameters) throws Exception {
         cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
 
+        // 状态 TTL 相关配置，过期时间设定为 36 小时
+        StateTtlConfig ttlConfig = StateTtlConfig
+                .newBuilder(Time.hours(3))
+                .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
+                .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
+                .cleanupFullSnapshot() //1.7 版本的.
+                .build();
+
         ValueStateDescriptor<Boolean> keyedStateDuplicated =
                 new ValueStateDescriptor<>("KeyedStateDeduplication", TypeInformation.of(new TypeHint<Boolean>() {
                 }));
+
+        keyedStateDuplicated.enableTimeToLive(ttlConfig);
+
         // 从状态后端恢复状态
         isExist = getRuntimeContext().getState(keyedStateDuplicated);
     }
