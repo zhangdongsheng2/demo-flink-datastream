@@ -59,8 +59,8 @@ public class PreprocessorTimeFlatMap implements FlatMapFunction<InputDataSingle,
                 dayEndTime2 = dayStartTime;
                 dayStartTime2 = dayStartTime.minusDays(1);
             }
-            //month 数据处理, 2020-6-1 00:00  的数据加一条 2020-5-1 00:00 -- 2020-6-1 00:00
-            if (localDateTime.getHour() == 0 && minute == 0) {
+            //month 数据处理, 2020-6-1 00:00  的数据加一条 2020-6-1 00:00 -- 2020-7-1 00:00
+            if (localDateTime.getDayOfMonth() == 1 && localDateTime.getHour() == 0 && minute == 0) {
                 monthEndTime2 = monthStartTime;
                 monthStartTime2 = monthStartTime.minusMonths(1);
             }
