@@ -23,7 +23,7 @@ public interface PropertiesConstants {
     String STREAM_CHECKPOINT_DIR = "stream.checkpoint.dir";
     String STREAM_CHECKPOINT_TYPE = "stream.checkpoint.type";
     String STREAM_CHECKPOINT_INTERVAL = "stream.checkpoint.interval";
-    String PROPERTIES_FILE_NAME = "application_local_dev.properties";
+    String PROPERTIES_FILE_NAME = "application.properties";
     String CHECKPOINT_MEMORY = "memory";
     String CHECKPOINT_FS = "fs";
     String CHECKPOINT_ROCKETSDB = "rocksdb";
