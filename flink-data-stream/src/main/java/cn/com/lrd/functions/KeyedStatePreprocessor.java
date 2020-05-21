@@ -1,13 +1,12 @@
 package cn.com.lrd.functions;
 
-import cn.com.lrd.utils.ParameterToolUtil;
+import cn.com.lrd.utils.JedisClusterUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.enumeration.EStep;
 import com.commerce.commons.model.EsDosage;
 import com.commerce.commons.model.EsDosagePhase;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.utils.DateUtil;
-import com.commerce.commons.utils.JedisClusterUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.state.MapState;
@@ -24,7 +23,6 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
-import redis.clients.jedis.JedisCluster;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -49,11 +47,9 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
 
 
     private ValueState<Long> lastTime;
-    private transient JedisCluster cluster;
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
         // 状态 TTL 相关配置，过期时间设定为 36 小时
         StateTtlConfig ttlConfig = StateTtlConfig
                 .newBuilder(Time.hours(36))
@@ -87,40 +83,40 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
         //时间存入半小时
         //=================下面用redis 存储阶段开始时间结束时间=============================
         Tuple2<LocalDateTime, LocalDateTime> halfTime = value.f1;
-        outPutData(cluster, halfTime, ctx, esDosagePhase, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
+        outPutData(halfTime, ctx, esDosagePhase, EStep.THIRTY_MINUTE.getName(), halfTimeOutputTag);
 
         Tuple2<LocalDateTime, LocalDateTime> hourTime = value.f2;
-        outPutData(cluster, hourTime, ctx, esDosagePhase, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
+        outPutData(hourTime, ctx, esDosagePhase, EStep.ONE_HOUR.getName(), hourTimeOutputTag);
 
         Tuple2<LocalDateTime, LocalDateTime> dayTime = value.f3;
-        outPutData(cluster, dayTime, ctx, esDosagePhase, EStep.ONE_DAY.getName(), dayTimeOutputTag);
+        outPutData(dayTime, ctx, esDosagePhase, EStep.ONE_DAY.getName(), dayTimeOutputTag);
 
         Tuple2<LocalDateTime, LocalDateTime> monthTime = value.f4;
-        outPutData(cluster, monthTime, ctx, esDosagePhase, EStep.ONE_MONTH.getName(), monthTimeOutputTag);
+        outPutData(monthTime, ctx, esDosagePhase, EStep.ONE_MONTH.getName(), monthTimeOutputTag);
     }
 
-    private void outPutData(JedisCluster cluster, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Context ctx, EsDosagePhase esDosagePhase, String step, OutputTag<Tuple2<String, EsDosage>> outputTag) throws Exception {
+    private void outPutData(Tuple2<LocalDateTime, LocalDateTime> tupleTime, Context ctx, EsDosagePhase esDosagePhase, String step, OutputTag<Tuple2<String, EsDosage>> outputTag) throws Exception {
         LocalDateTime localDateTime = DateUtil.parseLocalDateTime(esDosagePhase.getData_time()).withSecond(0);
 
         String key = esDosagePhase.getFeed_id() + DateUtil.toEpochSecond(tupleTime.f0) + DateUtil.toEpochSecond(tupleTime.f1);
-        String startTimeValue = cluster.hget(key, PropertiesConstants.START_TIME);
+        String startTimeValue = JedisClusterUtil.hget(key, PropertiesConstants.START_TIME);
         String startValue = String.valueOf(esDosagePhase.getData_value());
         String endValue = String.valueOf(esDosagePhase.getData_value());
         if (StringUtils.isEmpty(startTimeValue)) {
-            cluster.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+            JedisClusterUtil.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
         } else {
             String[] split = startTimeValue.split("#");
             LocalDateTime startTime = DateUtil.parseLocalDateTime(split[0]);
             //离线处理, 如果数据时间等于开始时间 就重新设置开始时间数据.
             boolean isOffline = localDateTime.equals(startTime) || localDateTime.isBefore(startTime);
             if (isOffline) {
-                cluster.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+                JedisClusterUtil.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
             } else {
                 startValue = split[1];
             }
         }
 
-        String endTimeValue = cluster.hget(key, PropertiesConstants.END_TIME);
+        String endTimeValue = JedisClusterUtil.hget(key, PropertiesConstants.END_TIME);
         if (StringUtils.isNotEmpty(endTimeValue)) {
             String[] split = endTimeValue.split("#");
             String time = split[0];
@@ -128,12 +124,12 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
             //离线数据过来 如果是修改的当前结束时间的数值, 就要更新结束时间的数值, value结果不变,  如果数据不是修改的结束时间数值就不用关系, value 用查出的结束值减去开始值
             boolean isOffline = localDateTime.equals(endTime) || localDateTime.isAfter(endTime);
             if (isOffline) {
-                cluster.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+                JedisClusterUtil.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
             } else {
                 endValue = split[1];
             }
         } else {
-            cluster.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+            JedisClusterUtil.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
         }
 
         //计算  开始时间的值 - 结束时间的值
@@ -141,7 +137,7 @@ public class KeyedStatePreprocessor extends KeyedProcessFunction<Tuple, Tuple6<S
         double value = subtract.doubleValue();
 
 
-        cluster.expire(key, 35 * 24 * 60 * 60);//设置35天过期
+        JedisClusterUtil.expire(key, 35 * 24 * 60 * 60);//设置35天过期
 
         EsDosage esDosage = new EsDosage(esDosagePhase.getFeed_id(), value,
                 DateUtil.toEpochSecond(tupleTime.f0), DateUtil.toEpochSecond(tupleTime.f1), DateUtil.formatLocalDateTime(tupleTime.f1)

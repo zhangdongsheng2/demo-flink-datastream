@@ -1,12 +1,12 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.JedisClusterUtil;
 import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.enumeration.FeedValueType;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.model.InputIdValueVo;
 import com.commerce.commons.utils.Calculator;
-import com.commerce.commons.utils.JedisClusterUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,9 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
-import redis.clients.jedis.JedisCluster;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, InputDataSingle>, Tuple2<String, InputDataSingle>> {
-    private transient JedisCluster jedisCluster;
     private String fendTopic;
 
     public CalibrationFlatMap(String topic) {
@@ -38,25 +35,14 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
     }
 
     @Override
-    public void open(Configuration parameters) throws Exception {
-        jedisCluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
-    }
-
-    @Override
     public void flatMap(Tuple2<String, InputDataSingle> value, Collector<Tuple2<String, InputDataSingle>> out) throws Exception {
 //        System.out.println(value.f1.getTime() + "=========================");
-        Boolean hexists = false;
-        try {
-            hexists = jedisCluster.hexists(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
-        } catch (Exception e) {
-            jedisCluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
-            log.info("jedisCluster报错重新获取<<<{}", e.getMessage());
-        }
+        boolean hexists = JedisClusterUtil.hexists(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
         if (!hexists || StringUtils.isEmpty(value.f1.getCode())) return;
 
         InputDataSingle inputDataSingle = value.f1;
 
-        String valueIds = jedisCluster.hget(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
+        String valueIds = JedisClusterUtil.hget(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), value.f0);
         if (StringUtils.isEmpty(valueIds)) {
             log.debug("数据没有inputId_feedId<<<{}", value.f1);
             return;
@@ -79,7 +65,7 @@ public class CalibrationFlatMap extends RichFlatMapFunction<Tuple2<String, Input
         String prop = inputDataSingle.getCode();
 
         //从redis中取出valFeedId和steps
-        String feedAndSteps = jedisCluster.hget(fendTopic, inputDataSingle.getInputId());
+        String feedAndSteps = JedisClusterUtil.hget(fendTopic, inputDataSingle.getInputId());
         Boolean hasFactItem = false;
 
         String express = null;

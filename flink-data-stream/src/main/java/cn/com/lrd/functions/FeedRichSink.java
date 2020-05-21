@@ -1,17 +1,16 @@
 package cn.com.lrd.functions;
 
+import cn.com.lrd.utils.JedisClusterUtil;
 import cn.com.lrd.utils.ParameterToolUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.enumeration.*;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.utils.CreateMySqlPool;
 import com.commerce.commons.utils.DateUtil;
-import com.commerce.commons.utils.JedisClusterUtil;
 import com.commerce.commons.utils.StringUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import redis.clients.jedis.JedisCluster;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -28,13 +27,11 @@ import java.util.UUID;
 public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
     private transient Connection con;
     private transient Statement statement;
-    private transient JedisCluster cluster;
 
     @Override
     public void open(Configuration parameters) throws Exception {
         con = CreateMySqlPool.getConnection(ParameterToolUtil.getParameterTool());
         statement = con.createStatement();
-        cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
     }
 
     @Override
@@ -85,7 +82,7 @@ public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
                 + value.getCode() + "_"
                 + value.getType() + "_"
                 + value.getAdd();
-        cluster.hset(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), feedInputMapKey, mapValue);
+        JedisClusterUtil.hset(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), feedInputMapKey, mapValue);
 
         //查询input  feed 是否存在不存在就创建
         String inputQuerySql = "SELECT id FROM " + value.getDsSchema() + ".input WHERE inst_id='" + instrumentId + "' AND prop='" + value.getCode() + "' AND inst_addr=" + value.getAdd() + " AND inst_type=" + value.getType();
@@ -125,7 +122,7 @@ public class FeedRichSink extends RichSinkFunction<InputDataSingle> {
                 feedId = resultSet.getString("id");
 
             mapValue = inputId + "," + feedId;
-            cluster.hset(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), feedInputMapKey, mapValue);
+            JedisClusterUtil.hset(ParameterToolUtil.getParameterTool().get(PropertiesConstants.LARUNDA_INPUT_FEED_KEY), feedInputMapKey, mapValue);
         }
 
 

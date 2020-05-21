@@ -1,13 +1,12 @@
 package cn.com.lrd.functions.dataset;
 
-import cn.com.lrd.utils.ParameterToolUtil;
+import cn.com.lrd.utils.JedisClusterUtil;
 import com.commerce.commons.constant.PropertiesConstants;
 import com.commerce.commons.enumeration.EStep;
 import com.commerce.commons.model.EsDosage;
 import com.commerce.commons.model.EsDosagePhase;
 import com.commerce.commons.model.InputDataSingle;
 import com.commerce.commons.utils.DateUtil;
-import com.commerce.commons.utils.JedisClusterUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
@@ -16,7 +15,6 @@ import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple6;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
-import redis.clients.jedis.JedisCluster;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -40,11 +38,9 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
     private Map<String, Double> lastState = new HashMap<>();
     private Map<String, Long> lastTime = new HashMap<>();
     private Map<String, Double> timeState = new HashMap<>();
-    private transient JedisCluster cluster;
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        cluster = JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool());
     }
 
     @Override
@@ -83,27 +79,27 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
         //=================下面用redis 存储阶段开始时间结束时间=============================
 
         Tuple2<LocalDateTime, LocalDateTime> dayTime = value.f3;
-        outPutData(cluster, dayTime, out, esDosagePhase, EStep.ONE_DAY.getName(), dayTimeOutputTag);
+        outPutData(dayTime, out, esDosagePhase, EStep.ONE_DAY.getName(), dayTimeOutputTag);
 
         Tuple2<LocalDateTime, LocalDateTime> monthTime = value.f4;
-        outPutData(cluster, monthTime, out, esDosagePhase, EStep.ONE_MONTH.getName(), monthTimeOutputTag);
+        outPutData(monthTime, out, esDosagePhase, EStep.ONE_MONTH.getName(), monthTimeOutputTag);
     }
 
-    private void outPutData(JedisCluster cluster, Tuple2<LocalDateTime, LocalDateTime> tupleTime, Collector<Tuple4<String, String, EsDosagePhase, EsDosage>> out, EsDosagePhase esDosagePhase, String step, String outputTag) throws Exception {
+    private void outPutData(Tuple2<LocalDateTime, LocalDateTime> tupleTime, Collector<Tuple4<String, String, EsDosagePhase, EsDosage>> out, EsDosagePhase esDosagePhase, String step, String outputTag) throws Exception {
         LocalDateTime localDateTime = DateUtil.parseLocalDateTime(esDosagePhase.getData_time()).withSecond(0);
 
         String key = esDosagePhase.getFeed_id() + DateUtil.toEpochSecond(tupleTime.f0) + DateUtil.toEpochSecond(tupleTime.f1);
-        String startTimeValue = cluster.hget(key, PropertiesConstants.START_TIME);
+        String startTimeValue = JedisClusterUtil.hget(key, PropertiesConstants.START_TIME);
         double value = 0.0;
         if (StringUtils.isEmpty(startTimeValue)) {
-            cluster.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+            JedisClusterUtil.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
         } else {
             String startValue = startTimeValue.split("#")[1];
 
             boolean equals = localDateTime.equals(tupleTime.f0);
             if (equals) {
                 //离线处理, 如果数据时间等于开始时间 就重新设置开始时间数据.
-                cluster.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+                JedisClusterUtil.hset(key, PropertiesConstants.START_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
                 startValue = "0.0";
             }
 
@@ -111,8 +107,8 @@ public class PreprocessorOutFlatMap extends RichFlatMapFunction<Tuple6<String, T
             value = subtract.doubleValue();
         }
 
-        cluster.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
-        cluster.expire(key, 35 * 24 * 60 * 60);//设置35天过期
+        JedisClusterUtil.hset(key, PropertiesConstants.END_TIME, esDosagePhase.getData_time() + "#" + esDosagePhase.getData_value());
+        JedisClusterUtil.expire(key, 35 * 24 * 60 * 60);//设置35天过期
 
         EsDosage esDosage = new EsDosage(esDosagePhase.getFeed_id(), value,
                 DateUtil.toEpochSecond(tupleTime.f0), DateUtil.toEpochSecond(tupleTime.f1), DateUtil.formatLocalDateTime(tupleTime.f1)

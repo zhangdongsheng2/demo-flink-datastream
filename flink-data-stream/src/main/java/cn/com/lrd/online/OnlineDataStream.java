@@ -2,6 +2,7 @@ package cn.com.lrd.online;
 
 import cn.com.lrd.functions.*;
 import cn.com.lrd.utils.EnvUtils;
+import cn.com.lrd.utils.JedisClusterUtil;
 import cn.com.lrd.utils.ParameterToolUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -10,7 +11,6 @@ import com.commerce.commons.model.*;
 import com.commerce.commons.schemas.InputDataSchema;
 import com.commerce.commons.utils.ESSinkUtil;
 import com.commerce.commons.utils.InfluxDBConfigUtil;
-import com.commerce.commons.utils.JedisClusterUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -68,7 +68,7 @@ public class OnlineDataStream {
         ProducerRecord<String, String> record = new ProducerRecord<>(parameterTool.get("notice.topic"), "1", "1");
         producer.send(record);
         producer.close();
-        JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool()).del(fendTopic);
+        JedisClusterUtil.del(fendTopic);
 
         //创建Flink 运行环境
         StreamExecutionEnvironment env = EnvUtils.prepare(parameterTool);
