@@ -88,7 +88,6 @@ public class OfflineDataSet {
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(parameterTool.getInt(PropertiesConstants.STREAM_PARALLELISM, 1));
 
-        ;
 
 
         FlatMapOperator<Tuple2<String, InputDataSingle>, Tuple2<String, InputDataSingle>> tuple2Tuple2FlatMapOperator =

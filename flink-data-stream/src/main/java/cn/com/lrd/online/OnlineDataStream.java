@@ -52,6 +52,10 @@ import static com.commerce.commons.utils.KafkaConfigUtil.buildKafkaProps;
 
 
 /**
+ * 灰度发布方法:
+ * 对旧的任务做过滤规则, 指定的sn 不处理.
+ * 开新的任务处理指定的sn 然后检查数据后在做是否完全替换.
+ * <p>
  * 实时处理
  */
 @Slf4j
