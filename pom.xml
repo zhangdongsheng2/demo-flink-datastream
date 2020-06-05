@@ -17,7 +17,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <skipTests>true</skipTests>
         <flink.version>1.7.2</flink.version>
-        <scala.binary.version>2.11</scala.binary.version>
+        <scala.binary.version>2.12</scala.binary.version>
         <kafka.version>2.3.1</kafka.version>
         <fastjson>1.2.57</fastjson>
         <log4j.version>1.2.17</log4j.version>

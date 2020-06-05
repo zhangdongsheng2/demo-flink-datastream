@@ -1,10 +1,6 @@
 package cn.com.lrd.online;
 
-import cn.com.lrd.utils.JedisClusterUtil;
-import com.commerce.commons.utils.DateUtil;
-
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
  * @description:
@@ -34,8 +30,9 @@ public class Test {
 
 //        System.out.println(JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool()).hget("dev2-rest-b-config-to-calibration", "cdb053c53ea8414fa64c8cb43298b373"));
 
-        System.out.println(JedisClusterUtil.hgetAll("ac9b0c0d8c4b42e598d64d04c61bb08815898680001589871600"));
+//        System.out.println(JedisClusterUtil.hgetAll("ac9b0c0d8c4b42e598d64d04c61bb08815898680001589871600"));
 
+//        System.out.println(JedisClusterUtil.getJedisCluster().incr("aaa"));
 
         //10000015_A10_1_2
 //        System.out.println( JedisClusterUtil.getJedisCluster(ParameterToolUtil.getParameterTool()).hexists("larunda.input.feed.key","66666666_A105_1_2"));
@@ -81,14 +78,27 @@ public class Test {
 //                .addField("water_level", 8.666d)
 //                .build());
 
-//        influxDBClient.write(Point.measurement("feed")
-//                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-//                .tag("feedid", "ss66666")
-//                .addField("value", 33.0)
-//                .build());
+//        Set<Point> points = new HashSet<>();
+//        for (int i = 0; i < 100000; i++) {
+//            Point.Builder builder = Point.measurement(influxDBConfig.getMeasurement())
+//                    .tag("feedid", "ss66666")
+//                    .addField("value", Float.valueOf(i))
+//                    .time(System.currentTimeMillis()+i, TimeUnit.MILLISECONDS);
+//
+//            Point point = builder.build();
+//            points.add(point);
+//        }
+//        BatchPoints build = BatchPoints.database(influxDBConfig.getDatabase()).points(points).build();
+//        influxDBClient.writeWithRetry(build);
+//        influxDBClient.close();
+
+//        List<QueryResult.Result> results = influxDBClient.query(new Query("select * from cpu")).getResults();
+//        for (QueryResult.Result result : results) {
+//            System.out.println(result.toString());
+//        }
 
 
-        LocalDateTime yyyyMMddHHmmss = DateUtil.parseLocalDateTime("20200512143700", "yyyyMMddHHmmss");
+//        LocalDateTime yyyyMMddHHmmss = DateUtil.parseLocalDateTime("20200512143700", "yyyyMMddHHmmss");
 
 
 //        System.out.println(sub(15,11));
